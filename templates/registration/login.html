@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+{% load static %}
+{% load i18n %}
+<html lang="zh-cn">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>登录</title>
+    <link rel="shortcut icon" href="{% static 'media/favicon.ico' %}">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/css/bootstrap.min.css">
+    <!-- link href="https://use.fontawesome.com/releases/v5.0.1/css/all.css" rel="stylesheet"-->
+    <link rel="stylesheet" href="{% static 'css/style.css' %}" />
+    <script defer src="{% static 'js/font-awesome/fontawesome-all.js' %}"></script>
+</head>
+<body>
+<div class="top-content">
+    <div class="inner-bg">
+        <div class="container">
+            <div class="row">
+                <div class="col-6 mx-auto">
+                    <h1 class="text-center"><a href="{% url 'index' %}"><strong>FinNews</strong></a></h1>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-6 mx-auto">
+                    <div class="form-box">
+                        <div class="form-top">
+                            <div class="form-top-left">
+                                <h3>登录</h3>
+                                <p>输入正确的用户名和密码</p>
+                            </div>
+                            <div class="form-top-right">
+                                <i class="fa fa-key"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-6 mx-auto">
+                    <div class="form-bottom">
+                        <form class="form" action="{% url 'login' %}" method="post">
+                            {% csrf_token %}
+                            {{ form.non_field_errors }}
+                            {% for field in form %}
+                                <div class="form-group">
+                                <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                                {{ field }}
+                                {{ field.errors }}
+                                {% if field.help_text %}
+                                    <p class="help text-small text-muted">{{ field.help_text|safe}}</p>
+                                {% endif %}
+                                </div>
+                            {% endfor %}
+                            {% for message in messages %}
+                                <p class="errorlist">{{ message }}</p>
+                            {% endfor %}
+                            <button type="submit" class="btn btn-primary">登录</button>
+                            <a class="btn btn-outline-primary btn-block" style="margin: 10px 0" href="{% url 'index' %}">取消</a>
+                            <input type="hidden" name="next" value="{{ next }}"/>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <p style="margin: 10px"><span>没有账号？<a href="{% url 'register' %}">立即注册</a></span></p>
+            <p><span><a href="{% url 'password_reset' %}">忘记密码？</a></span></p>
+        </div>
+    </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="zh-cn">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>自选股</title>
+    <link rel="shortcut icon" href="{% static 'media/favicon.ico' %}">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.3/css/bootstrap.min.css">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}" />
+    <script type="text/javascript" src="{% static 'js/jquery-3.2.1.min.js' %}" ></script>
+    <script type="text/javascript" src="{% static 'js/csrf.js' %}" ></script>
+</head>
+<body>
+<div class="top-content">
+    <div class="inner-bg">
+        <div class="container">
+            <div class="row">
+                <div class="col-6 mx-auto">
+                    <h1 class="text-center"><a href="{% url 'index' %}"><strong>FinNews</strong></a></h1>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-6 mx-auto">
+                    {% if user.is_authenticated %}
+                    <h3 style="margin: 15px 0">自选股信息</h3>
+                    <p id="tips" style="margin: 1.2rem 0">您可以 <button class="btn btn-outline-primary">添加</button>
+                        、
+                        <button class="btn btn-outline-primary">删除</button> 自选股，或者
+                        <a class="btn btn-outline-primary" href="{% url 'index' %}">返回首页</a> 。
+                    </p>
+                    {% if new_stock %}
+                        <p class="new_stock"> " {{ new_stock }} " 已添加！</p>
+                    {% endif %}
+                    {% if new_stock_error %}
+                        <p class="errorlist"> {{ new_stock_error }} </p>
+                    {% endif %}
+                    {% for message in messages %}
+                            <p class="errorlist">{{ message }}</p>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-8 mx-auto">
+                <table class="table">
+                    <thead>
+                    <tr >
+                        <th>股票名称</th>
+                        <th style="text-align: center">现价</th>
+                        <th style="text-align: center">跌涨</th>
+                        <th style="text-align: center">编辑</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for stock in stocks %}
+                        <tr class="tr_stocks" style="color: {{ stock.color }}">
+                            <td>{{ stock.name }}</td>
+                            <td style="text-align: right">{{ stock.current }}</td>
+                            <td style="text-align: right">{{ stock.percent }}% ({{ stock.delta }})</td>
+                            <td style="text-align: center"><button class="btn btn-danger delbtn" id="{{ stock.id }}">删除</button> </td>
+                        </tr>
+                    {% empty %}
+                        <div class="bd-callout bd-callout-danger" id="empty_news">
+                            <h5>没有自选股信息</h5>
+                            <p>请手动 <button class="btn btn-outline-primary" id="add_stock_2">添加</button> 自选股</p>
+                        </div>
+                    {% endfor %}
+
+                    <form class="form" action="{% url 'stocks' %}" method="post">
+                        {% csrf_token %}
+                        <tr class="form" id="tr_add">
+                            <td colspan="3">
+                                {%  for field in form %}
+                                {{ field }}
+                                {%  endfor %}
+                            </td>
+                            <td style="text-align: center">
+                                <button type="submit" class="btn btn-primary addbtn" style="margin: 0.45rem auto" id="add_stock">添加</button></td>
+                        </tr>
+                    </form>
+                    </tbody>
+                </table>
+                </div>
+            {% else %}
+                <p style="margin: 20px auto">你还没有登录，请
+                    <a class="btn btn-outline-primary" href="{% url 'login' %}">登录</a>
+                    或者
+                    <a class="btn btn-outline-primary" href="{% url 'register' %}">注册</a> 。
+                </p>
+            {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<script>
+    // 删除某个自选股
+    $('body').on('click', '.btn.btn-danger.delbtn', function () {
+        var csrftoken = getCookie('csrftoken');
+        var stock_id = $(this).attr('id');
+        // alert(stock_id)
+        $.ajaxSetup({
+            beforeSend: function (xhr, settings) {
+                if (!csrfSafeMethod(settings.type) && !this.crossDomain) {
+                    xhr.setRequestHeader("X-CSRFToken", csrftoken);
+                }
+            }
+        });
+        $.ajax({
+            url: 'del/',
+            type: 'POST',
+            data: {stock_id: stock_id},
+            dataType: 'json',
+            success: function (arg) {
+                // 网页动态显示删除这个记录，后台数据库已删除
+                var btn_row = document.getElementById(stock_id).parentNode.parentNode
+                btn_row.remove()
+                // 清空之前的错误信息
+                $('p#error_message').remove();
+                $('p#info_message').remove();
+                $('p.new_stock').remove();
+                if (arg.name) {
+                    $('p#tips').append('<p id="info_message" style="margin: 1rem 0"> " ' + arg.name+ ' " 已删除！</p>');
+                }
+                else {
+                    $('p#tips').append('<p id="info_message" style="margin: 1rem 0">已删除！</p>');
+                }
+                // 如果此时表格又为空，则显示错误信息
+                if (! ($('tr.tr_stocks').length)) {
+                    $('p#tips').append('<p class="errorlist" id="error_message" style="margin: 1rem 0">' + '对不起，您还没有 <button class="btn btn-primary addbtn" id="add_stock_3"> 添加 </button> 自选股</p>');
+                }
+            }
+        })
+    });
+</script>
+
+<!-- not using javascript to add stocks
+<script>
+    // 添加某个自选股
+    $('body').on('click', '.btn.btn-default.addbtn', function () {
+        var csrftoken = getCookie('csrftoken');
+        var stock_id = $.trim(document.getElementById('stock_id_or_name').value);
+        // alert(stock_id)
+        if( $(this).attr('id').startsWith('add_stock')) {
+            $.ajaxSetup({
+            beforeSend: function (xhr, settings) {
+                if (!csrfSafeMethod(settings.type) && !this.crossDomain) {
+                    xhr.setRequestHeader("X-CSRFToken", csrftoken);
+                }
+            }
+            });
+            $.ajax({
+                url: 'add/',
+                type: 'POST',
+                data: {stock_id: stock_id},
+                dataType: 'json',
+                success: function (arg) {
+                    if (arg.id) {
+                        var arg_id = '#' + arg.id;
+                        if (!($(arg_id).length)) {
+                            var tr_head = '<tr class="tr_stocks" style="color: ' + arg.color +'">';
+                            var td_1 = '<td>' + arg.name + '</td>';
+                            var td_2 = '<td style="text-align: right">' + arg.current + '</td>';
+                            var td_3 = '<td style="text-align: right">' + arg.percent + '% (' + arg.delta + ')</td>';
+                            var td_4 = '<td style="text-align: center"><button class="btn btn-default delbtn" style="margin: 0.45rem auto" id="' +
+                                    arg.id + '">删除</button> </td>';
+                            var tr_end = '</tr>';
+                            $('tr#tr_add').before(tr_head + td_1 + td_2 + td_3 + td_4 + tr_end);
+                        }
+                        // 清空之前的错误信息
+                        $('p#error_message').remove();
+                        $('p#info_message').remove();
+                        $('p#empty_stocks').remove();
+                        $('p#tips').append('<p id="info_message">已添加"'+arg.name+'"！</p>');
+                        // 清除输入框内容
+                        $('#stock_id_or_name').val('');
+                    }
+                },
+                error: function (arg) {
+                    // alert(arg.responseText);
+                    $('p#tips').append('<p class="errorlist" id="error_message">'+arg.responseText+'</p>');
+                    $('#stock_id_or_name').val('');
+                }
+            })
+        }
+    });
+</script>
+-->
+
+</body>
+</html>

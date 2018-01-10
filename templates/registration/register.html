@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="zh-cn">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>注册</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/css/bootstrap.min.css">
+    <link href="https://use.fontawesome.com/releases/v5.0.1/css/all.css" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}"/>
+    <script type="text/javascript" src="{% static 'js/jquery-3.2.1.min.js' %}"></script>
+    <script type="text/javascript" src="{% static 'js/csrf.js' %}"></script>
+</head>
+<body>
+<div class="top-content">
+    <div class="inner-bg">
+        <div class="container">
+            <div class="row">
+                <div class="col-6 mx-auto">
+                    <h1 class="text-center"><a href="{% url 'index' %}"><strong>FinNews</strong></a></h1>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-6 mx-auto">
+                    <div class="form-box">
+                        <div class="form-top">
+                            <div class="form-top-left">
+                                <h3>注册</h3>
+                                <p>输入用户名、邮箱和密码</p>
+                            </div>
+                            <div class="form-top-right">
+                                <i class="fa fa-pencil-alt"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-6 mx-auto">
+                    <div class="form-bottom">
+                        <form class="form" action="{% url 'register' %}" method="post">
+                            {% csrf_token %}
+                            {{ form.non_field_errors }}
+                            {% for field in form %}
+                                <div class="form-group">
+                                <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                                {{ field }}
+                                {{ field.errors }}
+                                {% if field.help_text %}
+                                    <p class="help text-small text-muted">{{ field.help_text|safe}}</p>
+                                {% endif %}
+                                </div>
+                            {% endfor %}
+                            <button type="submit" class="btn btn-primary">注册</button>
+                            <input type="hidden" name="next" value="{{ next }}"/>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-6 mx-auto">
+                    <p style="margin: 10px"><a href="/login/">已有账号登录?</a> 还是 <a href="/">返回首页</a></p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+<script>
+    // 检查用户名是否存在
+    $("#id_username").on('blur', function () {
+        var csrftoken = getCookie('csrftoken');
+        $('ul#dup_username').remove();
+        // alert("checking email")
+        var username = $(this).val();
+        $.ajaxSetup({
+            beforeSend: function (xhr, settings) {
+                if (!csrfSafeMethod(settings.type) && !this.crossDomain) {
+                    xhr.setRequestHeader("X-CSRFToken", csrftoken);
+                }
+            }
+        });
+        $.ajax({
+            url: 'checkusername/',
+            type: 'POST',
+            data: {username: username},
+            dataType: 'json',
+            success: function (arg) {
+                // alert(arg.exist)
+                if (parseInt(arg.exist) > 0) {
+                    $('input#id_username').after('<ul class="errorlist" id="dup_username"><li>已存在一位使用该名字的用户。</li></ul>');
+                }
+            }
+        })
+    });
+
+</script>
+
+<script>
+    // 检查邮件是否存在
+    $("#id_email").on('blur', function () {
+        var csrftoken = getCookie('csrftoken');
+        // alert("checking email")
+        $('ul#dup_email').remove();
+        var email = $(this).val();
+        $.ajaxSetup({
+            beforeSend: function (xhr, settings) {
+                if (!csrfSafeMethod(settings.type) && !this.crossDomain) {
+                    xhr.setRequestHeader("X-CSRFToken", csrftoken);
+                }
+            }
+        });
+        $.ajax({
+            url: 'checkemail/',
+            type: 'POST',
+            data: {email: email},
+            dataType: 'json',
+            success: function (arg) {
+                // alert(arg.exist)
+                if (parseInt(arg.exist) > 0) {
+                    $('input#id_email').after('<ul class="errorlist" id="dup_email"><li>已存在一位使用该电子邮件的用户。</li></ul>');
+                }
+            }
+        })
+    });
+</script>
+
+</body>
+</html>

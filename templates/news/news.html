@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="zh-cn">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>金融资讯</title>
+    <link rel="shortcut icon" href="{% static 'media/favicon.ico' %}">
+    <!--link rel="stylesheet" href="https://unpkg.com/mobi.css/dist/mobi.min.css" -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}" />
+</head>
+<body>
+<div class="top-content">
+    <div class="inner-bg">
+        <div class="container">
+            <div class="row">
+                <div class="col-6 mx-auto">
+                    <h1 class="text-center"><a href="{% url 'index' %}"><strong>FinNews</strong></a></h1>
+                </div>
+            </div>
+            {% if user.is_authenticated %}
+                <h2 style="margin: 15px 0">今日资讯</h2>
+                {% for news in news_list %}
+                     <div class="row">
+                        <div class="col-7 mx-auto">
+                          <h4 style="margin: 0.75rem auto">{{ news.title }}</h4>
+                          <p style="color: #777777; font-size: 90%"> {{ news.source }} {{ news.author }} | 发布时间：{{ news.pb_time }}</p>
+                          <p>{{ news.summary }}</p>
+                          <a class="btn btn-primary" href="{{ news.url }}" id="{{ news.id }}" target="_blank"> 阅读原文 </a>
+                        </div>
+                      </div>
+                    <hr>
+                {% endfor %}
+            {% else %}
+                <p style="margin: 20px auto">你还没有登录，请
+                    <a class="btn btn-outline-primary" href="{% url 'login' %}">登录</a>
+                    或者
+                    <a class="btn btn-outline-primary" href="{% url 'register' %}">注册</a> 。
+                </p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+</body>
+</html>
