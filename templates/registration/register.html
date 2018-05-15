@@ -2,71 +2,102 @@
 {% load static %}
 <html lang="zh-cn">
 <head>
-    <meta charset="utf-8">
-    <meta http-equiv="x-ua-compatible" content="ie=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
     <title>注册</title>
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/css/bootstrap.min.css">
-    <link href="https://use.fontawesome.com/releases/v5.0.1/css/all.css" rel="stylesheet">
-    <link rel="stylesheet" href="{% static 'css/style.css' %}"/>
-    <script type="text/javascript" src="{% static 'js/jquery-3.2.1.min.js' %}"></script>
-    <script type="text/javascript" src="{% static 'js/csrf.js' %}"></script>
+    <link rel="shortcut icon" href="{% static 'media/favicon.ico' %}">
+    <link rel="stylesheet" href="{% static 'css/materialize.min.css' %}">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}" />
 </head>
+
 <body>
-<div class="top-content">
-    <div class="inner-bg">
+    <header>
+        <nav class="white" role="navigation">
+        <div class="nav-wrapper container">
+          <a id="logo-container" href="#" class="brand-logo"> FinNews </a>
+          <ul class="right hide-on-med-and-down">
+              {% if user.is_authenticated %}
+                  <li><a href="{% url 'news' %}"> 读新闻 </a></li>
+                  <li><a href="{% url 'stocks' %}"> 查看股票 </a></li>
+                  <li><a href="{% url 'password_change' %}"> 修改密码 </a></li>
+                  <li><a href="{% url 'logout' %}"> 注销登录 </a></li>
+              {% else %}
+                  <li><a href="{% url 'login' %}"> 登录 </a></li>
+                  <li><a href="{% url 'register' %}"> 注册 </a></li>
+              {% endif %}
+          </ul>
+
+          <ul id="nav-mobile" class="sidenav">
+            {% if user.is_authenticated %}
+                  <li><a href="{% url 'news' %}"> 读新闻 </a></li>
+                  <li><a href="{% url 'stocks' %}"> 查看股票 </a></li>
+                  <li><a href="{% url 'password_change' %}"> 修改密码 </a></li>
+                  <li><a href="{% url 'logout' %}"> 注销登录 </a></li>
+              {% else %}
+                  <li><a href="{% url 'login' %}"> 登录 </a></li>
+                  <li><a href="{% url 'register' %}"> 注册 </a></li>
+              {% endif %}
+          </ul>
+          <a href="#" data-target="nav-mobile" class="sidenav-trigger"><i class="material-icons">menu</i></a>
+        </div>
+    </nav>
+    </header>
+
+    <main>
         <div class="container">
-            <div class="row">
-                <div class="col-6 mx-auto">
-                    <h1 class="text-center"><a href="{% url 'index' %}"><strong>FinNews</strong></a></h1>
+           <div class="row">
+                <div class="col s6">
+                    <h5> 注册 </h5>
+                    <p> 输入用户名、邮箱和密码 </p>
                 </div>
             </div>
-            <div class="row">
-                <div class="col-6 mx-auto">
-                    <div class="form-box">
-                        <div class="form-top">
-                            <div class="form-top-left">
-                                <h3>注册</h3>
-                                <p>输入用户名、邮箱和密码</p>
-                            </div>
-                            <div class="form-top-right">
-                                <i class="fa fa-pencil-alt"></i>
+
+            <div>
+                <form class="form" action="{% url 'register' %}" method="post">
+                    {% csrf_token %}
+                    {{ form.non_field_errors }}
+                    {% for field in form %}
+                        <div class="row">
+                            <div class="input-field col s6">
+                            {{ field }}
+                            <label for="{{ field.id_for_label }}" class="active">{{ field.label }}</label>
+
+                            {{ field.errors }}
+                            {% if field.help_text %}
+                                <p class="help text-small text-muted">{{ field.help_text|safe}}</p>
+                            {% endif %}
                             </div>
                         </div>
-                    </div>
-                </div>
-            </div>
-            <div class="row">
-                <div class="col-6 mx-auto">
-                    <div class="form-bottom">
-                        <form class="form" action="{% url 'register' %}" method="post">
-                            {% csrf_token %}
-                            {{ form.non_field_errors }}
-                            {% for field in form %}
-                                <div class="form-group">
-                                <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
-                                {{ field }}
-                                {{ field.errors }}
-                                {% if field.help_text %}
-                                    <p class="help text-small text-muted">{{ field.help_text|safe}}</p>
-                                {% endif %}
-                                </div>
-                            {% endfor %}
-                            <button type="submit" class="btn btn-primary">注册</button>
+                    {% endfor %}
+                    <div class="row">
+                        <div class="input-field col s6">
+                            <button type="submit" class="waves-effect waves-light btn">注册</button>
                             <input type="hidden" name="next" value="{{ next }}"/>
-                        </form>
+                        </div>
                     </div>
-                </div>
+                </form>
             </div>
+
             <div class="row">
-                <div class="col-6 mx-auto">
-                    <p style="margin: 10px"><a href="/login/">已有账号登录?</a> 还是 <a href="/">返回首页</a></p>
+                <div class="col s6">
+                    <p style="margin: 10px"><a href="/login/"> 已有账号登录? </a> 还是 <a href="/"> 返回首页 </a></p>
                 </div>
             </div>
         </div>
-    </div>
-</div>
+    </main>
 
+    <footer class="page-footer teal">
+        <div class="footer-copyright">
+          <div class="container">
+          Theme by <a class="brown-text text-lighten-3" href="http://materializecss.com">Materialize</a>
+          </div>
+        </div>
+    </footer>
+
+    <!--  Scripts-->
+  <script src="{% static 'js/jquery-3.3.1.min.js' %}"></script>
+  <script src="{% static 'js/materialize.min.js' %}"></script>
+  <script src="{% static 'js/csrf.js' %}"></script>
 
 
 <script>

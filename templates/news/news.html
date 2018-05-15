@@ -1,31 +1,55 @@
 <!DOCTYPE html>
 {% load static %}
-<html lang="zh-cn">
 <head>
-    <meta charset="utf-8">
-    <meta http-equiv="x-ua-compatible" content="ie=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>金融资讯</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title> 金融资讯 </title>
     <link rel="shortcut icon" href="{% static 'media/favicon.ico' %}">
-    <!--link rel="stylesheet" href="https://unpkg.com/mobi.css/dist/mobi.min.css" -->
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="{% static 'css/materialize.min.css' %}">
     <link rel="stylesheet" href="{% static 'css/style.css' %}" />
 </head>
+
 <body>
-<div class="top-content">
-    <div class="inner-bg">
-        <div class="container">
-            <div class="row">
-                <div class="col-6 mx-auto">
-                    <h1 class="text-center"><a href="{% url 'index' %}"><strong>FinNews</strong></a></h1>
-                </div>
-            </div>
+<header>
+    <nav class="white" role="navigation">
+        <div class="nav-wrapper container">
+          <a id="logo-container" href="#" class="brand-logo"> FinNews </a>
+          <ul class="right hide-on-med-and-down">
+              {% if user.is_authenticated %}
+                  <li><a href="{% url 'news' %}"> 读新闻 </a></li>
+                  <li><a href="{% url 'stocks' %}"> 查看股票 </a></li>
+                  <li><a href="{% url 'password_change' %}"> 修改密码 </a></li>
+                  <li><a href="{% url 'logout' %}"> 注销登录 </a></li>
+              {% else %}
+                  <li><a href="{% url 'login' %}"> 登录 </a></li>
+                  <li><a href="{% url 'register' %}"> 注册 </a></li>
+              {% endif %}
+          </ul>
+
+          <ul id="nav-mobile" class="sidenav">
             {% if user.is_authenticated %}
-                <h2 style="margin: 15px 0">今日资讯</h2>
+                  <li><a href="{% url 'news' %}"> 读新闻 </a></li>
+                  <li><a href="{% url 'stocks' %}"> 查看股票 </a></li>
+                  <li><a href="{% url 'password_change' %}"> 修改密码 </a></li>
+                  <li><a href="{% url 'logout' %}"> 注销登录 </a></li>
+              {% else %}
+                  <li><a href="{% url 'login' %}"> 登录 </a></li>
+                  <li><a href="{% url 'register' %}"> 注册 </a></li>
+              {% endif %}
+          </ul>
+          <a href="#" data-target="nav-mobile" class="sidenav-trigger"><i class="material-icons">menu</i></a>
+        </div>
+    </nav>
+    </header>
+
+    <main>
+        <div class="container">
+            {% if user.is_authenticated %}
+                <h4 class="center">今日资讯</h4>
                 {% for news in news_list %}
                      <div class="row">
-                        <div class="col-7 mx-auto">
-                          <h4 style="margin: 0.75rem auto">{{ news.title }}</h4>
+                        <div class="col s8">
+                          <h5 style="margin: 0.75rem auto">{{ news.title }}</h5>
                           <p style="color: #777777; font-size: 90%"> {{ news.source }} {{ news.author }} | 发布时间：{{ news.pb_time }}</p>
                           <p>{{ news.summary }}</p>
                           <a class="btn btn-primary" href="{{ news.url }}" id="{{ news.id }}" target="_blank"> 阅读原文 </a>
@@ -34,14 +58,26 @@
                     <hr>
                 {% endfor %}
             {% else %}
-                <p style="margin: 20px auto">你还没有登录，请
-                    <a class="btn btn-outline-primary" href="{% url 'login' %}">登录</a>
+                <p style="margin: 20px auto"> 你还没有登录，请
+                    <a class="waves-effect waves-light btn" href="{% url 'login' %}"> 登录 </a>
                     或者
-                    <a class="btn btn-outline-primary" href="{% url 'register' %}">注册</a> 。
+                    <a class="waves-effect waves-light btn" href="{% url 'register' %}"> 注册 </a> 。
                 </p>
             {% endif %}
         </div>
-    </div>
-</div>
+    </main>
+
+    <footer class="page-footer teal">
+        <div class="footer-copyright">
+          <div class="container">
+          Theme by <a class="brown-text text-lighten-3" href="http://materializecss.com">Materialize</a>
+          </div>
+        </div>
+    </footer>
+
+    <!--  Scripts-->
+  <script src="{% static 'js/jquery-3.3.1.min.js' %}"></script>
+  <script src="{% static 'js/materialize.min.js' %}"></script>
+  <script src="{% static 'js/csrf.js' %}"></script>
 </body>
 </html>

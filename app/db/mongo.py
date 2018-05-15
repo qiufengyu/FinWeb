@@ -1,6 +1,7 @@
 import pymongo
 import datetime
 
+from bson import ObjectId
 from django.conf import settings
 from django.contrib.auth.hashers import make_password, check_password
 
@@ -19,6 +20,7 @@ class MongoUser(object):
 
   def check_user_exist(self, username):
     return self.db_users.find_one({'username': username})
+
 
   def check_user_password(self, username, password):
     db_password = self.get_user_password(username)
@@ -68,7 +70,10 @@ class MongoUser(object):
 
   def get_user_stocks(self, username):
     if self.check_user_exist(username):
-      stocks_dict_list = self.db_users.find_one({'username': username})['stocks']
+      user = self.db_users.find_one({'username': username})
+      stocks_dict_list = []
+      if 'stocks' in user:
+        stocks_dict_list = user['stocks']
       sorted_stocks_dict_list = sorted(stocks_dict_list, key=lambda x: x['datetime'])
       stocks_list = []
       for y in sorted_stocks_dict_list:
@@ -76,6 +81,14 @@ class MongoUser(object):
       return stocks_list
     else:
       return None
+
+  def get_user_recent_reads(self, username):
+    recent_reads = []
+    if self.check_user_exist(username):
+      user = self.db_users.find_one({'username': username})
+      if 'recent_reads_title' in user:
+        recent_reads = user['recent_reads_title']
+    return recent_reads
 
   def delete_user_stock(self, username, stock_id):
     user_entity = self.check_user_exist(username)
@@ -134,6 +147,38 @@ class MongoUser(object):
       return stock_entity
     return None
 
+  def add_user_recent_reads_url(self, username, recent_reads_url):
+    user_entity = self.check_user_exist(username)
+    if user_entity:
+      print(user_entity)
+      user_recent_reads = user_entity['recent_reads_url']
+      if recent_reads_url in user_recent_reads:
+        return
+      if len(user_recent_reads) < 50:
+        user_recent_reads.append(recent_reads_url)
+      else:
+        user_recent_reads = [recent_reads_url] + user_recent_reads[:-1]
+      self.db_users.find_one_and_update({'username': username},
+                                     {'$set': {'recent_reads_url': user_recent_reads}})
+
+
+  def add_user_recent_reads_title(self, username, recent_reads_title):
+    user_entity = self.check_user_exist(username)
+    if user_entity:
+      user_recent_reads = user_entity['recent_reads_title']
+      if recent_reads_title in user_recent_reads:
+        return
+      if len(user_recent_reads) < 50:
+        user_recent_reads.append(recent_reads_title)
+      else:
+        news_read_title = [recent_reads_title] + user_recent_reads[:-1]
+      self.db_users.find_one_and_update({'username': username},
+                                   {'$set': {'recent_reads_title': user_recent_reads}})
+
+  def db_update_user_tags(self, username, tags):
+    self.db_users.find_one_and_update({'username': username},
+                                   {'$set': {'tags': tags}})
+
 
 class MongoNews(object):
   def __init__(self):
@@ -146,17 +191,20 @@ class MongoNews(object):
     :return: 最新的十条新闻，不论用户喜好，仅做测试时用。
     或者在主页显示，为了节省数据传输的开销，先不传输具体的内容
     """
-    news_cursor = self.db_candidate.find().sort('pb_time', pymongo.DESCENDING)
+    news_cursor = self.db_candidate.find().sort([
+      ('reads', pymongo.DESCENDING),
+      ('pb_time', pymongo.DESCENDING) ])
     ret_news = []
     i = 0
     for news in news_cursor:
       if i > top:
         break
       news_item = {}
-      news_item['id'] = news['_id']
+      news_item['id'] = str(news['_id'])
       news_item['title'] = news['title']
       news_item['pb_time'] = news['pb_time']
       news_item['source'] = news['source']
+      news_item['reads'] = int(news['reads'])
       if 'author' in news and news['author']:
         news_item['author'] = news['author']
       else:
@@ -167,7 +215,7 @@ class MongoNews(object):
       else:
         contents = news['para_content_text_and_images']
         for c in contents:
-          if 'http' in c or len(c) < 25:
+          if '//' in c or len(c) < 25:
             continue
           else:
             news_item['summary'] = c
@@ -178,3 +226,28 @@ class MongoNews(object):
       ret_news.append(news_item)
       i = i + 1
     return ret_news
+
+  def get_news_url_by_id(self, id: str) -> str:
+    res = self.db_candidate.find_one({"_id": ObjectId(id)})
+    # print(res)
+    if res:
+      return res['url']
+    else:
+      return None
+
+  def get_news_title_by_id(self, id: str) -> str:
+    res = self.db_candidate.find_one({"_id": ObjectId(id)})
+    # print(res)
+    if res:
+      return res['title']
+    else:
+      return None
+
+  def increase_reads(self, id: str):
+    res = self.db_candidate.find_one({"_id": ObjectId(id)})
+    if res:
+      increase_value = int(res['reads']) + 1
+      self.db_candidate.find_one_and_update({'_id': ObjectId(id)},
+                          {'$set': {'reads': increase_value}})
+
+

@@ -1,3 +1,7 @@
+import jieba
+import numpy as np
+from scipy.spatial.distance import cosine
+
 from django.conf import settings
 from django.contrib import auth
 from django.contrib import messages
@@ -13,7 +17,6 @@ from django.template import loader
 
 from django.utils.translation import ugettext, ugettext_lazy as _
 
-
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import PasswordChangeForm
 from django.shortcuts import render, redirect
@@ -26,6 +29,7 @@ from app.forms.passwordResetForm import PasswordResetForm
 from app.forms.passwordChangeForm import PasswordChangeForm
 from app.forms.confirmPasswordResetForm import ConfirmPasswordResetForm
 from app.db.mongo import MongoUser, MongoNews
+from app.recommend.wordvec import WordVec
 from app.stocks.get_stock_info import get_stock_info, get_stock_info_list
 
 db_users = MongoUser()
@@ -33,8 +37,8 @@ db_news = MongoNews()
 
 
 def index(request):
-  return render(request, 'index.html')
-
+  news_list = db_news.get_latest_news(top=15)
+  return render(request, 'index.html', context={'news_list': news_list})
 
 def login(request):
   if request.method == 'POST':
@@ -56,12 +60,67 @@ def login(request):
   return render(request, 'registration/login.html', context={'form': form})
 
 
+"""
+仅接受 POST 请求
+"""
+def add_read_news(request):
+  if request.method == 'POST':
+    if request.user:
+      username = request.user
+      uu = str(username)
+      read_id = request.POST.get('news_id', None)
+      db_news.increase_reads(read_id)
+      url = None
+      title = None
+      if read_id:
+        url = db_news.get_news_url_by_id(read_id)
+        title = db_news.get_news_title_by_id(read_id)
+      if url and title:
+        # print(username, url, title)
+        db_users.add_user_recent_reads_url(uu, url)
+        db_users.add_user_recent_reads_title(uu, title)
+        return JsonResponse({"info": "OK"})
+    return HttpResponseServerError('数据库错误！', content_type="text/plain")
+
 @login_required
 def news(request):
-  username = request.user.username
-  news_list = db_news.get_latest_news(top=10)
-  return render(request, 'news/news.html', context={'news_list': news_list})
+  word_vec = WordVec()
 
+  def _get_title_vec(title: str):
+    item_matrix = []
+    for token in jieba.cut(title, cut_all=False):
+      token_vec = word_vec.getvec(token)
+      if token_vec is not None:
+        item_matrix.append(token_vec)
+    item_array = np.array(item_matrix)
+    return (np.mean(item_array, axis=0), np.max(item_array, axis=0))
+
+  username = str(request.user)
+  print(username)
+  user_embedding_matrix = []
+  candidates = db_news.get_latest_news(top=100)
+  for candidate in candidates:
+    candidate['score'] = candidate['reads'] / 1000.0
+  if username:
+    user_read_list = db_users.get_user_recent_reads(username)
+    if len(user_read_list) < 1:
+      user_embedding_matrix.append([0.0] * settings.WORD_VEC_DIM)
+    else:
+      for read in user_read_list:
+        user_embedding_matrix.append(_get_title_vec(read)[0])
+    user_embedding_array = np.array(user_embedding_matrix)
+    user_em_mean = np.mean(user_embedding_array, axis=0)
+    user_em_max = np.max(user_embedding_array, axis=0)
+    user_em = np.concatenate((user_em_mean, user_em_max), axis=0)
+    if len(user_read_list) > 1:
+      for candidate in candidates:
+        candidate_title = candidate['title']
+        candidate_temp = _get_title_vec(candidate_title)
+        candidate_em = np.concatenate((candidate_temp[0], candidate_temp[1]), axis=0)
+        candidate['score'] += 1.0 - cosine(user_em, candidate_em)
+
+  data = sorted(candidates, key=lambda x: x['score'], reverse=True)
+  return render(request, 'news/news.html', context={'news_list': data})
 
 @login_required
 def stocks(request):
@@ -115,14 +174,12 @@ def stocks_del(request):
   return HttpResponseServerError('删除错误！', content_type="text/plain")
 
 
-
 @login_required
 def logout(request):
   # type(request.user): django.utils.functional.SimpleLazyObjectdb.sqlite3
   # print(type(request.user.username)) -> str
   auth.logout(request)
   return redirect('/')
-
 
 def register(request):
   if request.method == 'POST':
@@ -260,13 +317,6 @@ def password_reset_confirm(request, uidb64=None, token=None, *arg, **kwargs):
 
 def password_reset_complete(request):
   return redirect('/')
-
-
-"""
-仅接受 POST 请求
-"""
-def add_read_news(request):
-  pass
 
 
 def check_email_exist(request):

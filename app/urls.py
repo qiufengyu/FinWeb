@@ -1,6 +1,7 @@
 from django.urls import path
 
 from app import views
+from app import rest_views
 
 urlpatterns = [
 	path('', views.index, name='index'),
@@ -16,7 +17,9 @@ urlpatterns = [
       views.password_reset_confirm, name='password_reset_confirm'), #
   path('reset/done/', views.password_reset_complete, name='password_reset_complete'),
 	path('news/', views.news, name='news'),
+  path('news/add/', views.add_read_news, name='add_read_news'),
 	path('stocks/', views.stocks, name='stocks'),
 	path('stocks/add/', views.stocks_add, name='stocks_add'),
 	path('stocks/del/', views.stocks_del, name='stocks_del'),
+  path('news/rec', rest_views.GetRecommend.as_view(), name='news_rec'),
 ]

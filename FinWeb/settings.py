@@ -36,6 +36,7 @@ INSTALLED_APPS = [
   'django.contrib.messages',
   'django.contrib.staticfiles',
   'app.apps.AppConfig',
+  'rest_framework'
 ]
 
 MIDDLEWARE = [
@@ -129,7 +130,6 @@ STATICFILES_DIRS = (
   os.path.join(BASE_DIR, 'static'),
 )
 
-
 # MongoDB
 MONGO_HOST = "114.212.191.119"  # 主机IP
 MONGO_PORT = 27017  # 端口号
@@ -146,3 +146,15 @@ MONGO_COLLECTION_EAST_MONEY_ARTICLE = 'east_money_article'
 MONGO_COLLECTION_EAST_MONEY_ANNO = 'east_money_anno'
 MONGO_COLLECTION_EAST_MONEY_RESEARCH_REPORT = 'east_money_research_report'
 MONGO_COLLECTION_CANDIDATE = 'candidate'
+
+# Django-Rest-Framework
+REST_FRAMEWORK = {
+    # Use Django's standard `django.contrib.auth` permissions,
+    # or allow read-only access for unauthenticated users.
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.DjangoModelPermissionsOrAnonReadOnly'
+    ]
+}
+
+WORD_VEC_MODEL = 'wv.model'
+WORD_VEC_DIM = 128
