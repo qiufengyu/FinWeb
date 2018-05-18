@@ -21,5 +21,12 @@ urlpatterns = [
 	path('stocks/', views.stocks, name='stocks'),
 	path('stocks/add/', views.stocks_add, name='stocks_add'),
 	path('stocks/del/', views.stocks_del, name='stocks_del'),
-  path('news/rec', rest_views.GetRecommend.as_view(), name='news_rec'),
+  # APIs
+  path('api/login/', rest_views.Login.as_view(), name='api_login'),
+  path('api/register', rest_views.Register.as_view(), name='api_register'),
+  path('api/news/rec', rest_views.GetRecommend.as_view(), name='api_news_rec'),
+  path('api/news/read', rest_views.AddUserReadNews.as_view(), name='api_news_read'),
+  path('api/stocks', rest_views.GetUserStocks.as_view(), name='api_stocks'),
+  path('api/stocks/add', rest_views.AddUserStocks.as_view(), name='api_stocks_add'),
+  path('api/stocks/del', rest_views.DelUserStocks.as_view(), name='api_stocks_del'),
 ]

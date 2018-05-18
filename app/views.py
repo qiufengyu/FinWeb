@@ -65,11 +65,12 @@ def login(request):
 """
 def add_read_news(request):
   if request.method == 'POST':
+    read_id = request.POST.get('news_id', None)
+    if read_id:
+      db_news.increase_reads(read_id)
     if request.user:
       username = request.user
       uu = str(username)
-      read_id = request.POST.get('news_id', None)
-      db_news.increase_reads(read_id)
       url = None
       title = None
       if read_id:

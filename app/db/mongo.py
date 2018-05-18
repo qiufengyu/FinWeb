@@ -6,6 +6,9 @@ from django.conf import settings
 from django.contrib.auth.hashers import make_password, check_password
 
 # 9hv-7Ub-whD-77P
+from app.stocks.get_stock_info import get_stock_info
+
+
 class MongoUser(object):
   def __init__(self):
     self.client = pymongo.MongoClient(settings.MONGO_HOST, settings.MONGO_PORT)
@@ -18,11 +21,11 @@ class MongoUser(object):
   def __del__(self):
     self.client.close()
 
-  def check_user_exist(self, username):
+  def check_user_exist(self, username: str):
     return self.db_users.find_one({'username': username})
 
 
-  def check_user_password(self, username, password):
+  def check_user_password(self, username: str, password: str) -> bool:
     db_password = self.get_user_password(username)
     if db_password:
       return check_password(password=password, encoded=db_password)
@@ -113,6 +116,7 @@ class MongoUser(object):
   def add_user_stock(self, username, stock_id):
     user_stocks = None
     stock_entity = None
+    real_id = stock_id
     print("Try adding stock", stock_id)
     if stock_id.startswith('sz') or stock_id.startswith('sh'):
       stock_entity = self.stockstable.find_one({'stock_id': stock_id})
@@ -131,7 +135,8 @@ class MongoUser(object):
         if user_entity:
           user_stocks = user_entity['stocks']
           this_stock = {}
-          this_stock['stock_id'] = stock_entity['stock_id']
+          this_stock['stock_id'] = str(stock_entity['stock_id'])
+          real_id = this_stock['stock_id']
           this_stock['datetime'] = datetime.datetime.now()
           user_stocks.append(this_stock)
     if user_stocks:
@@ -144,7 +149,8 @@ class MongoUser(object):
           user_stocks.remove(stock)
       self.db_users.find_one_and_update({'username': username},
                                         {'$set': {'stocks': user_stocks}})
-      return stock_entity
+    if stock_entity:
+      return get_stock_info(real_id)
     return None
 
   def add_user_recent_reads_url(self, username, recent_reads_url):

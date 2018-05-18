@@ -51,7 +51,7 @@ def get_stock_info_list(stock_code_list):
   data_list = response.read().decode("gbk").split('\n')
   stock_info_list = []
   for i in range(len(data_list)-1):
-    print(data_list[i])
+    # print(data_list[i])
     data = data_list[i].split(',')
     current = float(data[3])
     previous_close = float(data[2])
@@ -77,5 +77,5 @@ def get_stock_info_list(stock_code_list):
     else:
       stock_info['color'] = 'black'
     stock_info_list.append(stock_info)
-  print(stock_info_list)
+  # print(stock_info_list)
   return stock_info_list
