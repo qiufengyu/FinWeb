@@ -46,13 +46,14 @@
         <div class="container">
             {% if user.is_authenticated %}
                 <h4 class="center">今日资讯</h4>
+                <p>您已登录，欢迎您：<a href="#">{{ user.username }}</a></p>
                 {% for news in news_list %}
                      <div class="row">
                         <div class="col s8">
                           <h5 style="margin: 0.75rem auto">{{ news.title }}</h5>
                           <p style="color: #777777; font-size: 90%"> {{ news.source }} {{ news.author }} | 发布时间：{{ news.pb_time }}</p>
                           <p>{{ news.summary }}</p>
-                          <a class="btn btn-primary" href="{{ news.url }}" id="{{ news.id }}" target="_blank"> 阅读原文 </a>
+                          <a class="waves-effect waves-light btn readbtn" href="{{ news.url }}" id="{{ news.id }}" target="_blank"> 阅读原文 </a>
                         </div>
                       </div>
                     <hr>
@@ -79,5 +80,29 @@
   <script src="{% static 'js/jquery-3.3.1.min.js' %}"></script>
   <script src="{% static 'js/materialize.min.js' %}"></script>
   <script src="{% static 'js/csrf.js' %}"></script>
+  <script>
+    $('body').on('click', '.btn.readbtn', function () {
+        var csrftoken = getCookie('csrftoken');
+        var news_id = $(this).attr('id');
+        // alert(stock_id)
+        $.ajaxSetup({
+            beforeSend: function (xhr, settings) {
+                if (!csrfSafeMethod(settings.type) && !this.crossDomain) {
+                    xhr.setRequestHeader("X-CSRFToken", csrftoken);
+                }
+            }
+        });
+        $.ajax({
+            url: '{% url 'add_read_news' %}',
+            type: 'POST',
+            data: {news_id: news_id},
+            dataType: 'json',
+            success: function (arg) {
+
+            }
+        })
+    });
+
+  </script>
 </body>
 </html>

@@ -93,6 +93,14 @@ class MongoUser(object):
         recent_reads = user['recent_reads_title']
     return recent_reads
 
+  def get_user_recent_reads_url(self, username):
+    recent_reads = []
+    if self.check_user_exist(username):
+      user = self.db_users.find_one({'username': username})
+      if 'recent_reads_url' in user:
+        recent_reads = user['recent_reads_url']
+    return recent_reads
+
   def delete_user_stock(self, username, stock_id):
     user_entity = self.check_user_exist(username)
     if user_entity:
@@ -162,9 +170,11 @@ class MongoUser(object):
         return
       if len(user_recent_reads) < 50:
         user_recent_reads.append(recent_reads_url)
+        self.db_users.find_one_and_update({'username': username},
+                                          {'$set': {'recent_reads_url': user_recent_reads}})
       else:
         user_recent_reads = [recent_reads_url] + user_recent_reads[:-1]
-      self.db_users.find_one_and_update({'username': username},
+        self.db_users.find_one_and_update({'username': username},
                                      {'$set': {'recent_reads_url': user_recent_reads}})
 
 
@@ -176,10 +186,12 @@ class MongoUser(object):
         return
       if len(user_recent_reads) < 50:
         user_recent_reads.append(recent_reads_title)
+        self.db_users.find_one_and_update({'username': username},
+                                          {'$set': {'recent_reads_title': user_recent_reads}})
       else:
         news_read_title = [recent_reads_title] + user_recent_reads[:-1]
-      self.db_users.find_one_and_update({'username': username},
-                                   {'$set': {'recent_reads_title': user_recent_reads}})
+        self.db_users.find_one_and_update({'username': username},
+                                   {'$set': {'recent_reads_title': news_read_title}})
 
   def db_update_user_tags(self, username, tags):
     self.db_users.find_one_and_update({'username': username},
@@ -226,7 +238,7 @@ class MongoNews(object):
           else:
             news_item['summary'] = c
             break
-      c2 = news_item['summary']
+      c2 = news_item['summary'] if 'summary' in news_item else ''
       if len(c2) > 120:
         news_item['summary'] = c2[:115] + '......'
       ret_news.append(news_item)
