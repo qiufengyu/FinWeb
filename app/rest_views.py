@@ -84,10 +84,6 @@ class Register(APIView):
       # 无效输入
       return Response({'status': -2})
 
-
-
-        # form.save()
-
 class GetRecommend(APIView):
   """
     HTTP GET:
@@ -112,11 +108,12 @@ class GetRecommend(APIView):
     print(request.GET)
     username = request.GET.get('username', None)
     user_embedding_matrix = []
-    candidates = db_news.get_latest_news(top=100)
+    candidates = db_news.get_latest_news(top=150)
     for candidate in candidates:
       candidate['score'] = candidate['reads'] / 1000.0
     if username:
       user_read_list = db_users.get_user_recent_reads(username)
+      user_read_url_set = set(db_users.get_user_recent_reads_url(username))
       if len(user_read_list) < 1:
         user_embedding_matrix.append([0.0] * self.dim)
       else:
@@ -126,14 +123,15 @@ class GetRecommend(APIView):
       user_em_mean = np.mean(user_embedding_array, axis=0)
       user_em_max = np.max(user_embedding_array, axis=0)
       user_em = np.concatenate((user_em_mean, user_em_max), axis=0)
-      if len(user_read_list) > 1:
-        for candidate in candidates:
-          candidate_title = candidate['title']
-          candidate_temp = self._get_title_vec(candidate_title)
-          candidate_em = np.concatenate((candidate_temp[0], candidate_temp[1]), axis=0)
-          candidate['score'] += 1.0 - cosine(user_em, candidate_em)
-
-    data = sorted(candidates, key=lambda x: x['score'], reverse=True)
+      filtered_candidates = []
+      for candidate in candidates:
+        candidate_title = candidate['title']
+        candidate_temp = self._get_title_vec(candidate_title)
+        candidate_em = np.concatenate((candidate_temp[0], candidate_temp[1]), axis=0)
+        candidate['score'] += 1.0 - cosine(user_em, candidate_em)
+        if candidate['url'] not in user_read_url_set:
+          filtered_candidates.append(candidate)
+    data = sorted(filtered_candidates, key=lambda x: x['score'], reverse=True)
     return Response(data)
 
 class AddUserReadNews(APIView):
@@ -155,9 +153,11 @@ class AddUserReadNews(APIView):
       db_news.increase_reads(news_id)
       # 获取新闻标题
       title = db_news.get_news_title_by_id(news_id)
+      uurl = db_news.get_news_url_by_id(news_id)
       if title:
         # 把新的新闻记录加到用户的历史记录中
         db_users.add_user_recent_reads_title(username, title)
+        db_users.add_user_recent_reads_url(username, uurl)
         return Response({'status': 1})
     return Response({'status': -1})
 

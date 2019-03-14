@@ -99,11 +99,12 @@ def news(request):
   username = str(request.user)
   print(username)
   user_embedding_matrix = []
-  candidates = db_news.get_latest_news(top=100)
+  candidates = db_news.get_latest_news(top=150)
   for candidate in candidates:
     candidate['score'] = candidate['reads'] / 1000.0
   if username:
     user_read_list = db_users.get_user_recent_reads(username)
+    user_read_url_set = set(db_users.get_user_recent_reads_url(username))
     if len(user_read_list) < 1:
       user_embedding_matrix.append([0.0] * settings.WORD_VEC_DIM)
     else:
@@ -113,14 +114,15 @@ def news(request):
     user_em_mean = np.mean(user_embedding_array, axis=0)
     user_em_max = np.max(user_embedding_array, axis=0)
     user_em = np.concatenate((user_em_mean, user_em_max), axis=0)
-    if len(user_read_list) > 1:
-      for candidate in candidates:
-        candidate_title = candidate['title']
-        candidate_temp = _get_title_vec(candidate_title)
-        candidate_em = np.concatenate((candidate_temp[0], candidate_temp[1]), axis=0)
-        candidate['score'] += 1.0 - cosine(user_em, candidate_em)
-
-  data = sorted(candidates, key=lambda x: x['score'], reverse=True)
+    filtered_candidates = []
+    for candidate in candidates:
+      candidate_title = candidate['title']
+      candidate_temp = _get_title_vec(candidate_title)
+      candidate_em = np.concatenate((candidate_temp[0], candidate_temp[1]), axis=0)
+      candidate['score'] += 1.0 - cosine(user_em, candidate_em)
+      if candidate['url'] not in user_read_url_set:
+        filtered_candidates.append(candidate)
+  data = sorted(filtered_candidates, key=lambda x: x['score'], reverse=True)
   return render(request, 'news/news.html', context={'news_list': data})
 
 @login_required
@@ -139,7 +141,7 @@ def stocks(request):
     if new_stock and stocks_db:
       stocks_info_list = get_stock_info_list(stocks_db)
       return render(request, 'stocks/stocks.html', context={'stocks': stocks_info_list, 'form': form,
-                                                            'new_stock': new_stock['stock_name']})
+                                                            'new_stock': new_stock['name']})
     elif stocks_db:
       stocks_info_list = get_stock_info_list(stocks_db)
       return render(request, 'stocks/stocks.html', context={'stocks': stocks_info_list, 'form': form,
