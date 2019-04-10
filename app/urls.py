@@ -10,6 +10,11 @@ urlpatterns = [
   path('register/checkemail/', views.check_email_exist, name='register_checkemail'),
   path('login/', views.login, name='login'),
 	path('logout/', views.logout, name='logout'),
+
+  path('userview/<str:username>/', views.userview, name='userview'), # view user info, likes
+  path('tagsview/', views.tagsview, name='tagsview'), # 用户定义标签
+  path('tags/add/', views.tagsadd, name='tagsadd'),
+  path('tags/del/', views.tagsdel, name='tagsdel'),
 	path('password_change/', views.change_password, name='password_change'),
   path('password_reset/', views.password_reset, name='password_reset'),
   path('password_reset/done/', views.password_reset_done, name='password_reset_done'),
@@ -17,7 +22,17 @@ urlpatterns = [
       views.password_reset_confirm, name='password_reset_confirm'), #
   path('reset/done/', views.password_reset_complete, name='password_reset_complete'),
 	path('news/', views.news, name='news'),
+  path('newsid/<str:objid>/', views.newsid, name='newsid'),
   path('news/add/', views.add_read_news, name='add_read_news'),
+
+  path('newslike/', views.newslike, name='newslikeview'),
+  path('news/like/', views.newslikeupdate, name='newslikeupdate'),
+  path('news/like/delete', views.newslikedelete, name='newslikedelete'),
+
+  path('friends/', views.friendsview, name='friends'), # see friends
+  path('friends/add/', views.friendsadd, name='friendsadd'),
+  path('friends/delete/', views.friendsdelete, name='friendsdelete'),
+
 	path('stocks/', views.stocks, name='stocks'),
 	path('stocks/add/', views.stocks_add, name='stocks_add'),
 	path('stocks/del/', views.stocks_del, name='stocks_del'),

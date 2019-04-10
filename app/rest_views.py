@@ -1,9 +1,13 @@
+from pprint import pprint
+
 import jieba
 import numpy as np
 
 from django.contrib import auth
 from scipy.spatial.distance import cosine
 from rest_framework.views import APIView
+
+from FinWeb import settings
 from app.db.mongo import MongoUser, MongoNews
 from app.recommend.wordvec import WordVec
 
@@ -105,15 +109,23 @@ class GetRecommend(APIView):
     return (np.mean(item_array, axis=0), np.max(item_array, axis=0))
 
   def get(self, request, format=None):
-    print(request.GET)
     username = request.GET.get('username', None)
+    print(username)
     user_embedding_matrix = []
     candidates = db_news.get_latest_news(top=150)
     for candidate in candidates:
       candidate['score'] = candidate['reads'] / 1000.0
     if username:
-      user_read_list = db_users.get_user_recent_reads(username)
-      user_read_url_set = set(db_users.get_user_recent_reads_url(username))
+      user_entity = db_users.check_user_exist(username)
+      user_read_list = user_entity['recent_reads_title']
+      user_read_url_set = set(user_entity['recent_reads_url'])
+      user_friends = user_entity["friends"]
+      user_keywords = user_entity["tags"]  # 字典结构
+      pprint(user_keywords)
+      user_friends_likes_objid = []
+      for friend in user_friends:
+        friend_entity = db_users.check_user_exist(friend)
+        user_friends_likes_objid += friend_entity["likes_objid"]
       if len(user_read_list) < 1:
         user_embedding_matrix.append([0.0] * self.dim)
       else:
@@ -125,11 +137,20 @@ class GetRecommend(APIView):
       user_em = np.concatenate((user_em_mean, user_em_max), axis=0)
       filtered_candidates = []
       for candidate in candidates:
-        candidate_title = candidate['title']
-        candidate_temp = self._get_title_vec(candidate_title)
-        candidate_em = np.concatenate((candidate_temp[0], candidate_temp[1]), axis=0)
-        candidate['score'] += 1.0 - cosine(user_em, candidate_em)
         if candidate['url'] not in user_read_url_set:
+          candidate_title = candidate['title']
+          candidate_temp = self._get_title_vec(candidate_title)
+          candidate_em = np.concatenate((candidate_temp[0], candidate_temp[1]), axis=0)
+          candidate['score'] += 1.0 - cosine(user_em, candidate_em)
+          # 如果是好友收藏，上调 0.1
+          if candidate['id'] in user_friends_likes_objid:
+            candidate['score'] += 0.1
+          # 如果含有用户关键字，上调 0.1
+          keywords_tune = 0.0
+          for kw in user_keywords:
+            if kw['name'] in candidate['title']:
+              keywords_tune = 0.02
+          candidate['score'] += keywords_tune
           filtered_candidates.append(candidate)
     data = sorted(filtered_candidates, key=lambda x: x['score'], reverse=True)
     return Response(data)

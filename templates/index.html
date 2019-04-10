@@ -19,6 +19,8 @@
               {% if user.is_authenticated %}
                   <li><a href="{% url 'news' %}"> 读新闻 </a></li>
                   <li><a href="{% url 'stocks' %}"> 查看股票 </a></li>
+                  <li><a href="{% url 'newslikeview' %}"> 查看收藏 </a></li>
+                  <li><a href="{% url 'friends' %}"> 关注用户 </a></li>
                   <li><a href="{% url 'password_change' %}"> 修改密码 </a></li>
                   <li><a href="{% url 'logout' %}"> 注销登录 </a></li>
               {% else %}
@@ -31,6 +33,8 @@
             {% if user.is_authenticated %}
                   <li><a href="{% url 'news' %}"> 读新闻 </a></li>
                   <li><a href="{% url 'stocks' %}"> 查看股票 </a></li>
+                  <li><a href="{% url 'newslikeview' %}"> 查看收藏 </a></li>
+                  <li><a href="{% url 'friends' %}"> 关注用户 </a></li>
                   <li><a href="{% url 'password_change' %}"> 修改密码 </a></li>
                   <li><a href="{% url 'logout' %}"> 注销登录 </a></li>
               {% else %}
@@ -52,12 +56,13 @@
             <h4 style="margin: 15px 0">随便看看</h4>
             {% for news in news_list %}
                  <div class="row">
+                    <div class="col s2"></div>
                     <div class="col s8">
-                      <h5 style="margin: 0.75rem auto">{{ news.title }}</h5>
+                      <h5 style="margin: 0.75rem auto"><a href="/newsid/{{ news.id }}" id="{{ news.id }}">{{ news.title }}</a></h5>
                       <p style="color: #777777; font-size: 90%"> {{ news.source }} {{ news.author }} | 发布时间：{{ news.pb_time }}</p>
                       <p> {{ news.summary }} </p>
-                      <a class="waves-effect waves-light btn readbtn" href="{{ news.url }}" id="{{ news.id }}" target="_blank"> 阅读原文 </a>
                     </div>
+                    <div class="col s2"></div>
                   </div>
                 <hr>
             {% empty %}
@@ -81,30 +86,5 @@
         <!--  Scripts-->
   <script src="{% static 'js/jquery-3.3.1.min.js' %}"></script>
   <script src="{% static 'js/materialize.min.js' %}"></script>
-  <script src="{% static 'js/csrf.js' %}"></script>
-    <script>
-    $('body').on('click', '.btn.readbtn', function () {
-        var csrftoken = getCookie('csrftoken');
-        var news_id = $(this).attr('id');
-        // alert(stock_id)
-        $.ajaxSetup({
-            beforeSend: function (xhr, settings) {
-                if (!csrfSafeMethod(settings.type) && !this.crossDomain) {
-                    xhr.setRequestHeader("X-CSRFToken", csrftoken);
-                }
-            }
-        });
-        $.ajax({
-            url: '{% url 'add_read_news' %}',
-            type: 'POST',
-            data: {news_id: news_id},
-            dataType: 'json',
-            success: function (arg) {
-
-            }
-        })
-    });
-
-    </script>
 </body>
 </html>

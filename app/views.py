@@ -1,3 +1,5 @@
+from pprint import pprint
+
 import jieba
 import numpy as np
 from scipy.spatial.distance import cosine
@@ -22,6 +24,7 @@ from django.contrib.auth.forms import PasswordChangeForm
 from django.shortcuts import render, redirect
 
 from app.forms.loginForm import LoginForm
+from app.forms.tagForm import TagForm
 from app.forms.userForm import UserForm
 from app.forms.stockForm import StockForm
 
@@ -59,34 +62,149 @@ def login(request):
     form = LoginForm()
   return render(request, 'registration/login.html', context={'form': form})
 
+# 管理个性化标签
+@login_required
+def tagsview(request):
+  username = request.user.username
+  form = TagForm()
+  tags_list = []
+  if request.method == 'POST':
+    new_tag = db_users.add_user_tag(username=username, tag_name=request.POST['tag_name'])
+    tags_db = db_users.get_user_tags(username)
+    if new_tag and tags_db:
+      return render(request, 'user/usertag.html', context={'tags': tags_db, 'form': form,
+                                                            'new_tag': new_tag})
+    elif tags_db:
+      return render(request, 'user/usertag.html', context={'tags': tags_db, 'form': form,
+                                                            'new_tag_error': '添加失败，请输入合法且不重复的标签！'})
+  else:
+    tags_db = db_users.get_user_tags(username)
+    if tags_db:
+      return render(request, 'user/usertag.html', context={'tags': tags_db, 'form': form})
+  return render(request, 'user/usertag.html', context={"tags": tags_list, 'form': form})
 
-"""
-仅接受 POST 请求
-"""
+@login_required
+def tagsadd(request):
+  username = request.user.username
+  if request.method == 'POST':
+    if request.POST['tag_name'] and username:
+      tag_entity = db_users.add_user_tag(username, request.POST['tag_name'])
+      if tag_entity:
+        return JsonResponse({"info": 0})
+  return HttpResponseServerError("添加错误，请检查您的输入！", content_type="text/plain")
+
+@login_required
+def tagsdel(request):
+  username = request.user.username
+  if request.method == 'POST':
+    if request.POST['tag_name'] and username:
+      tag_name = db_users.delete_user_tag(username, request.POST['tag_name'])
+      if tag_name:
+        return JsonResponse({"info": 0, "name": tag_name})
+  return HttpResponseServerError('删除错误！', content_type="text/plain")
+
+# 管理用户的好友
+@login_required
+def friendsview(request):
+  friends = []
+  username = str(request.user)
+  if username:
+    user_entity = db_users.check_user_exist(username)
+    if user_entity:
+      friend_list = user_entity["friends"]
+      for x in friend_list:
+        friend = {}
+        friend["username"] = x
+        recent_like_id, recent_like_title = db_users.get_user_recent_like_one(x)
+        if recent_like_title and recent_like_id:
+          friend["recentid"] = recent_like_id
+          friend["recenttitle"] = recent_like_title
+        friends.append(friend)
+  return render(request, 'user/userfriend.html', context={"friends": friends})
+
+def friendsadd(request):
+  if request.method == 'POST':
+    username = str(request.user)
+    friendname = request.POST.get('friendname', None)
+    if username and friendname:
+      res = db_users.add_user_friend(username=username, friend=friendname)
+      if res == 1:
+        return JsonResponse({"info": 1})
+      else:
+        return JsonResponse({"info": 0})
+  return HttpResponseServerError('数据库错误！', content_type="text/plain")
+
+def friendsdelete(request):
+  if request.method == 'POST':
+    username = str(request.user)
+    friendname = request.POST.get('fname', None)
+    if username and friendname:
+      res = db_users.del_user_friend(username=username, friend=friendname)
+      if res == 1:
+        return JsonResponse({"info": 1})
+      else:
+        return JsonResponse({"info": 0})
+  return HttpResponseServerError('数据库错误！', content_type="text/plain")
+
+# 管理用户的收藏
+@login_required
+def newslike(request):
+  like_content = []
+  username = str(request.user)
+  if username:
+    user_entity = db_users.check_user_exist(username)
+    if user_entity:
+      like_list = user_entity["likes_title"]
+      like_list_objid = user_entity["likes_objid"]
+      for (x, y) in zip(like_list, like_list_objid):
+        item = {}
+        item["title"] = x
+        item["objid"] = y
+        like_content.append(item)
+  return render(request, 'user/userlike.html', context={"likecontext": like_content})
+
+# 查看一个用户的收藏
+@login_required
+def userview(request, username=None):
+  like_content = []
+  target_user = "查无此人，"
+  if username:
+    target_user += str(username)
+    user_entity = db_users.check_user_exist(username)
+    if user_entity:
+      exists = 1
+      target_user = username
+      like_list = user_entity["likes_title"]
+      like_list_objid = user_entity["likes_objid"]
+      for (x, y) in zip(like_list, like_list_objid):
+        item = {}
+        item["title"] = x
+        item["objid"] = y
+        like_content.append(item)
+      return render(request, 'user/user.html',
+                      context={"likecontext": like_content, "targetuser": target_user, "exists": exists})
+  return render(request, 'user/user.html', context={"likecontext": like_content, "targetuser": target_user})
+
+# 仅接受 POST 请求
 def add_read_news(request):
   if request.method == 'POST':
     read_id = request.POST.get('news_id', None)
+    news_item = None
     if read_id:
       db_news.increase_reads(read_id)
-    if request.user:
+      news_item = db_news.get_news_by_id(read_id)
+    if news_item and request.user:
       username = request.user
       uu = str(username)
-      url = None
-      title = None
-      if read_id:
-        url = db_news.get_news_url_by_id(read_id)
-        title = db_news.get_news_title_by_id(read_id)
-      if url and title:
-        # print(username, url, title)
-        db_users.add_user_recent_reads_url(uu, url)
-        db_users.add_user_recent_reads_title(uu, title)
-        return JsonResponse({"info": "OK"})
+      # print(username, url, title)
+      db_users.add_user_recent_reads(username=uu, news=news_item)
+      return JsonResponse({"info": "OK"})
     return HttpResponseServerError('数据库错误！', content_type="text/plain")
 
+# 推荐算法实现
 @login_required
 def news(request):
   word_vec = WordVec()
-
   def _get_title_vec(title: str):
     item_matrix = []
     for token in jieba.cut(title, cut_all=False):
@@ -95,16 +213,22 @@ def news(request):
         item_matrix.append(token_vec)
     item_array = np.array(item_matrix)
     return (np.mean(item_array, axis=0), np.max(item_array, axis=0))
-
   username = str(request.user)
   print(username)
   user_embedding_matrix = []
   candidates = db_news.get_latest_news(top=150)
   for candidate in candidates:
-    candidate['score'] = candidate['reads'] / 1000.0
+    candidate['score'] = candidate['reads'] / 10000.0
   if username:
-    user_read_list = db_users.get_user_recent_reads(username)
-    user_read_url_set = set(db_users.get_user_recent_reads_url(username))
+    user_entity = db_users.check_user_exist(username)
+    user_read_list = user_entity['recent_reads_title']
+    user_read_url_set = set(user_entity['recent_reads_url'])
+    user_friends = user_entity["friends"]
+    user_keywords = user_entity["tags"] # 字典结构
+    user_friends_likes_objid = []
+    for friend in user_friends:
+      friend_entity = db_users.check_user_exist(friend)
+      user_friends_likes_objid += friend_entity["likes_objid"]
     if len(user_read_list) < 1:
       user_embedding_matrix.append([0.0] * settings.WORD_VEC_DIM)
     else:
@@ -116,14 +240,80 @@ def news(request):
     user_em = np.concatenate((user_em_mean, user_em_max), axis=0)
     filtered_candidates = []
     for candidate in candidates:
-      candidate_title = candidate['title']
-      candidate_temp = _get_title_vec(candidate_title)
-      candidate_em = np.concatenate((candidate_temp[0], candidate_temp[1]), axis=0)
-      candidate['score'] += 1.0 - cosine(user_em, candidate_em)
       if candidate['url'] not in user_read_url_set:
+        candidate_title = candidate['title']
+        candidate_temp = _get_title_vec(candidate_title)
+        candidate_em = np.concatenate((candidate_temp[0], candidate_temp[1]), axis=0)
+        candidate['score'] += 1.0 - cosine(user_em, candidate_em)
+        # 如果是好友收藏，上调 0.1
+        if candidate['id'] in user_friends_likes_objid:
+          candidate['score'] += 0.1
+        # 如果含有用户关键字，上调 0.1
+        keywords_tune = 0.0
+        for kw in user_keywords:
+          if kw['name'] in candidate['title']:
+            keywords_tune = 0.02
+        candidate['score'] += keywords_tune
         filtered_candidates.append(candidate)
   data = sorted(filtered_candidates, key=lambda x: x['score'], reverse=True)
   return render(request, 'news/news.html', context={'news_list': data})
+
+def newsid(request, objid=None):
+  # 首先需要增加用户的阅读历史记录
+  username = str(request.user)
+  if objid:
+    print(username, ": ", objid)
+    news = db_news.get_news_by_id(objid)
+    # 同时为其阅读量增加 1
+
+    if "likedby" in news and len(news["likedby"]) > 0:
+      news["showliked"] = news["likedby"][-10:]
+    if news:
+      db_users.add_user_recent_reads(username, news)
+      return render(request, "news/newsid.html", context={"news": news})
+  return render(request, "news/newsid.html", context={"errorMsg": 1})
+
+@login_required
+def newslikeupdate(request):
+  if request.method == 'POST':
+    # 首先需要增加用户的收藏记录
+    username = str(request.user)
+    print(request.POST)
+    objid = request.POST.get('news_id', None)
+    if objid:
+      print(username, "likes:", objid)
+      news = db_news.get_news_by_id(objid)
+      if news:
+        # 用户更新收藏
+        res = db_users.user_likes_add(username, news)
+        if res == 1:
+          # 此时发生收藏，新闻中记录
+          db_news.add_liked(objid, username)
+          return JsonResponse({"info": 1})
+        else:
+          return JsonResponse({"info": 0})
+    return HttpResponseServerError("数据库添加错误", content_type="text/plain")
+
+@login_required
+def newslikedelete(request):
+  if request.method == 'POST':
+    username = str(request.user)
+    print(request.POST)
+    objid = request.POST.get('news_id', None)
+    if objid:
+      print(username, "dislikes:", objid)
+      news = db_news.get_news_by_id(objid)
+      if news:
+        # 用户方面删除记录
+        res1 = db_users.user_likes_delete(username, news)
+        if res1 == 1:
+          # 新闻方面删除
+          db_news.del_liked(objid, username)
+          return JsonResponse({"info": 1})
+        else:
+          return JsonResponse({"info": 0})
+    return HttpResponseServerError("数据库删除错误", content_type="text/plain")
+
 
 @login_required
 def stocks(request):
@@ -247,6 +437,7 @@ def password_reset(request):
     to_email = request.POST['email']
     if to_email:
       user_in_db = db_users.check_email_exist(to_email)
+      print(user_in_db)
       if user_in_db:
         # 发送邮件
         # pprint.pprint(user_in_db)
@@ -289,7 +480,6 @@ def password_reset(request):
 
 def password_reset_done(request):
   return redirect('/')
-
 
 def password_reset_confirm(request, uidb64=None, token=None, *arg, **kwargs):
   assert uidb64 is not None and token is not None
@@ -348,6 +538,9 @@ def check_username_exist(request):
 """
 一些废弃的做法
 """
+
+def reserve(request):
+  return HttpResponseServerError('未定义方法', content_type="text/plain")
 # @login_required
 # def stocks2(request):
 #   """

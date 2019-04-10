@@ -1,10 +1,9 @@
 <!DOCTYPE html>
 {% load static %}
-<html lang="zh-cn">
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>注册</title>
+  <title> 金融资讯 </title>
   <link rel="shortcut icon" href="{% static 'media/favicon.ico' %}">
   <link rel="stylesheet" href="{% static 'css/materialize.min.css' %}">
   <link rel="stylesheet" href="{% static 'css/style.css' %}"/>
@@ -20,7 +19,6 @@
           <li><a href="{% url 'news' %}"> 读新闻 </a></li>
           <li><a href="{% url 'stocks' %}"> 查看股票 </a></li>
           <li><a href="{% url 'newslikeview' %}"> 查看收藏 </a></li>
-          <li><a href="{% url 'tagsview' %}"> 标签管理 </a></li>
           <li><a href="{% url 'friends' %}"> 关注用户 </a></li>
           <li><a href="{% url 'password_change' %}"> 修改密码 </a></li>
           <li><a href="{% url 'logout' %}"> 注销登录 </a></li>
@@ -35,7 +33,6 @@
           <li><a href="{% url 'news' %}"> 读新闻 </a></li>
           <li><a href="{% url 'stocks' %}"> 查看股票 </a></li>
           <li><a href="{% url 'newslikeview' %}"> 查看收藏 </a></li>
-          <li><a href="{% url 'tagsview' %}"> 标签管理 </a></li>
           <li><a href="{% url 'friends' %}"> 关注用户 </a></li>
           <li><a href="{% url 'password_change' %}"> 修改密码 </a></li>
           <li><a href="{% url 'logout' %}"> 注销登录 </a></li>
@@ -51,44 +48,51 @@
 
 <main>
   <div class="container">
-    <div class="row">
-      <div class="col s6">
-        <h5> 注册 </h5>
-        <p> 输入用户名、邮箱和密码 </p>
-      </div>
-    </div>
-
-    <div>
-      <form class="form" action="{% url 'register' %}" method="post">
-        {% csrf_token %}
-        {{ form.non_field_errors }}
-        {% for field in form %}
-          <div class="row">
-            <div class="input-field col s6">
-              {{ field }}
-              <label for="{{ field.id_for_label }}" class="active">{{ field.label }}</label>
-
-              {{ field.errors }}
-              {% if field.help_text %}
-                <p class="help text-small text-muted">{{ field.help_text|safe }}</p>
-              {% endif %}
-            </div>
+    {% if user.is_authenticated %}
+      <h4 class="center">资讯详情</h4>
+      {% if errorMsg %}
+        <p style="margin: 20px auto"> 对不起，数据库错误，资讯已经删除！</p>
+      {% else %}
+      <div class="row">
+        <div class="col s2"></div>
+        <div class="col s8">
+          <h5 style="margin: 0.75rem auto">{{ news.title }}</h5>
+          <p style="color: #777777; font-size: 90%"> {{ news.source }} {{ news.author }} | 发布时间：{{ news.pb_time }}</p>
+          <p>{{ news.summary }}</p>
+          <p><a class="waves-effect waves-light btn red likebtn" id="like{{ news.id }}">
+            收藏点赞 </a>
+          <a class="waves-effect waves-light btn readbtn" href="{{ news.url }}" id="read{{ news.id }}" target="_blank">
+            阅读原文 </a></p>
+          <div class="recent-likedby">
+            <p> 【最近收藏】
+              {% for usr in news.likedby %}
+                <span style="padding-left: 5px; padding-right: 5px"><a href="/app/userview/{{ usr }}">{{ usr }}</a></span>
+              {% empty %}
+                <span> 抱歉，没有人收藏该资讯！</span>
+              {% endfor %}
+            </p>
           </div>
-        {% endfor %}
-        <div class="row">
-          <div class="input-field col s6">
-            <button type="submit" class="waves-effect waves-light btn">注册</button>
-            <input type="hidden" name="next" value="{{ next }}"/>
-          </div>
+        <hr />
+          {% for para in news.para_content_text_and_images %}
+            {% if "//" in para %}
+              <p><img src="http:{{ para }}"/></p>
+            {% else %}
+              <p> {{ para }}</p>
+            {% endif %}
+          {% empty %}
+            <p style="margin: 20px auto"> 新闻内容为图片内容，请点击阅读原本跳转至原链接阅读。</p>
+          {% endfor %}
         </div>
-      </form>
-    </div>
-
-    <div class="row">
-      <div class="col s6">
-        <p style="margin: 10px"><a href="/login/"> 已有账号登录? </a> 还是 <a href="/"> 返回首页 </a></p>
+        <div class="col s2"></div>
       </div>
-    </div>
+      {% endif %}
+    {% else %}
+      <p style="margin: 20px auto"> 你还没有登录，请
+        <a class="waves-effect waves-light btn" href="{% url 'login' %}"> 登录 </a>
+        或者
+        <a class="waves-effect waves-light btn" href="{% url 'register' %}"> 注册 </a> 。
+      </p>
+    {% endif %}
   </div>
 </main>
 
@@ -104,15 +108,11 @@
 <script src="{% static 'js/jquery-3.3.1.min.js' %}"></script>
 <script src="{% static 'js/materialize.min.js' %}"></script>
 <script src="{% static 'js/csrf.js' %}"></script>
-
-
 <script>
-  // 检查用户名是否存在
-  $("#id_username").on('blur', function () {
+  $('body').on('click', '.btn.red.likebtn', function () {
     var csrftoken = getCookie('csrftoken');
-    $('ul#dup_username').remove();
-    // alert("checking email")
-    var username = $(this).val();
+    var raw_news_id = $(this).attr('id');
+    var news_id = raw_news_id.substr(4);
     $.ajaxSetup({
       beforeSend: function (xhr, settings) {
         if (!csrfSafeMethod(settings.type) && !this.crossDomain) {
@@ -121,49 +121,18 @@
       }
     });
     $.ajax({
-      url: 'checkusername/',
+      url: '{% url 'newslikeupdate' %}',
       type: 'POST',
-      data: {username: username},
+      data: {news_id: news_id},
       dataType: 'json',
       success: function (arg) {
-        // alert(arg.exist)
-        if (parseInt(arg.exist) > 0) {
-          $('input#id_username').after('<ul class="errorlist" id="dup_username"><li>已存在一位使用该名字的用户。</li></ul>');
+        if (arg.info > 0) {
+          alert("收藏成功");
         }
       }
     })
   });
 
 </script>
-
-<script>
-  // 检查邮件是否存在
-  $("#id_email").on('blur', function () {
-    var csrftoken = getCookie('csrftoken');
-    // alert("checking email")
-    $('ul#dup_email').remove();
-    var email = $(this).val();
-    $.ajaxSetup({
-      beforeSend: function (xhr, settings) {
-        if (!csrfSafeMethod(settings.type) && !this.crossDomain) {
-          xhr.setRequestHeader("X-CSRFToken", csrftoken);
-        }
-      }
-    });
-    $.ajax({
-      url: 'checkemail/',
-      type: 'POST',
-      data: {email: email},
-      dataType: 'json',
-      success: function (arg) {
-        // alert(arg.exist)
-        if (parseInt(arg.exist) > 0) {
-          $('input#id_email').after('<ul class="errorlist" id="dup_email"><li>已存在一位使用该电子邮件的用户。</li></ul>');
-        }
-      }
-    })
-  });
-</script>
-
 </body>
 </html>

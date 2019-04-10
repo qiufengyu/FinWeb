@@ -2,8 +2,8 @@
 <project version="4">
   <component name="WebServers">
     <option name="servers">
-      <webServer id="26155f54-fe61-4e83-b230-a8626047c88b" name="NLP62" url="http://114.212.189.62">
-        <fileTransfer host="114.212.189.62" port="22" accessType="SFTP">
+      <webServer id="26155f54-fe61-4e83-b230-a8626047c88b" name="NLP10802" url="http://114.212.189.240">
+        <fileTransfer host="114.212.189.240" port="22" accessType="SFTP">
           <advancedOptions>
             <advancedOptions dataProtectionLevel="Private" />
           </advancedOptions>

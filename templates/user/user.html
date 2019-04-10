@@ -51,21 +51,27 @@
 <main>
   <div class="container">
     {% if user.is_authenticated %}
-      <h4 class="center">今日资讯</h4>
-      <p class="center-align">您已登录，欢迎您：<a href="#">{{ user.username }}</a></p>
-      {% for news in news_list %}
-        <div class="row">
-          <div class="col s2"></div>
-          <div class="col s8">
-            <h5 style="margin: 0.75rem auto"><a href="/newsid/{{ news.id }}" id="{{ news.id }}"
-                                                target="_blank">{{ news.title }}</a></h5>
-            <p style="color: #777777; font-size: 90%"> {{ news.source }} {{ news.author }} | 发布时间：{{ news.pb_time }}</p>
-            <p>{{ news.summary }}</p>
-          </div>
-          <div class="col s2"></div>
+      <h4 class="center">{{ targetuser }}
+        {% if exists %}
+        <span><button class="waves-effect waves-light btn follow" id="fo{{ targetuser }}"> 关注 </button></span>
+        <span><button class="waves-effect waves-light btn red unfollow" id="un{{ targetuser }}"> 取消关注 </button></span>
+        {% endif %}
+      </h4>
+      {% if errorMsg %}
+        <p style="margin: 20px auto"> 对不起，数据库错误！</p>
+      {% else %}
+      <div class="row">
+        <div class="col s8">
+          <h5 style="margin: 0.75rem auto">近期收藏</h5>
+          {% for news in likecontext %}
+            <p><a class="readbtn" href="/newsid/{{ news.objid }}" id="{{ news.objid }}" target="_blank">{{ news.title }}</a></p>
+            <hr />
+          {% empty %}
+            <p>该用户没有收藏任何资讯！</p>
+          {% endfor %}
         </div>
-        <hr>
-      {% endfor %}
+      </div>
+      {% endif %}
     {% else %}
       <p style="margin: 20px auto"> 你还没有登录，请
         <a class="waves-effect waves-light btn" href="{% url 'login' %}"> 登录 </a>
@@ -87,5 +93,66 @@
 <!--  Scripts-->
 <script src="{% static 'js/jquery-3.3.1.min.js' %}"></script>
 <script src="{% static 'js/materialize.min.js' %}"></script>
+<script src="{% static 'js/csrf.js' %}"></script>
+<script>
+    // 添加关注
+    $('body').on('click', '.follow', function () {
+        var csrftoken = getCookie('csrftoken');
+        var raw_friendname = $(this).attr('id');
+        var friendname = raw_friendname.substr(2);
+        // alert(stock_id)
+        $.ajaxSetup({
+            beforeSend: function (xhr, settings) {
+                if (!csrfSafeMethod(settings.type) && !this.crossDomain) {
+                    xhr.setRequestHeader("X-CSRFToken", csrftoken);
+                }
+            }
+        });
+        $.ajax({
+            url: '{% url 'friendsadd' %}',
+            type: 'POST',
+            data: {friendname: friendname},
+            dataType: 'json',
+            success: function (arg) {
+              if (arg.info > 0) {
+                alert("关注成功！");
+              }
+              else {
+                alert("已经关注！");
+              }
+            }
+        })
+    });
+</script>
+<script>
+    // 添加关注
+    $('body').on('click', '.unfollow', function () {
+        var csrftoken = getCookie('csrftoken');
+        var raw_friendname = $(this).attr('id');
+        var friendname = raw_friendname.substr(2);
+        // alert(stock_id)
+        $.ajaxSetup({
+            beforeSend: function (xhr, settings) {
+                if (!csrfSafeMethod(settings.type) && !this.crossDomain) {
+                    xhr.setRequestHeader("X-CSRFToken", csrftoken);
+                }
+            }
+        });
+        $.ajax({
+            url: '{% url 'friendsdelete' %}',
+            type: 'POST',
+            data: {friendname: friendname},
+            dataType: 'json',
+            success: function (arg) {
+              if (arg.info > 0) {
+                alert("取关成功！");
+              }
+              else {
+                alert("并未关注！");
+              }
+            }
+        })
+    });
+</script>
 </body>
 </html>

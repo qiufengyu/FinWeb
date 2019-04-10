@@ -51,21 +51,35 @@
 <main>
   <div class="container">
     {% if user.is_authenticated %}
-      <h4 class="center">今日资讯</h4>
-      <p class="center-align">您已登录，欢迎您：<a href="#">{{ user.username }}</a></p>
-      {% for news in news_list %}
-        <div class="row">
-          <div class="col s2"></div>
-          <div class="col s8">
-            <h5 style="margin: 0.75rem auto"><a href="/newsid/{{ news.id }}" id="{{ news.id }}"
-                                                target="_blank">{{ news.title }}</a></h5>
-            <p style="color: #777777; font-size: 90%"> {{ news.source }} {{ news.author }} | 发布时间：{{ news.pb_time }}</p>
-            <p>{{ news.summary }}</p>
-          </div>
-          <div class="col s2"></div>
-        </div>
-        <hr>
-      {% endfor %}
+      <h4 class="center">关注用户</h4>
+      <p>您已登录，欢迎您：<a href="#">{{ user.username }}</a></p>
+      <div class="row">
+      <div class="col s12">
+        <table class="table">
+          <thead>
+          <tr>
+            <th>用户</th>
+            <th>最新收藏</th>
+            <th style="text-align: center">编辑</th>
+          </tr>
+          </thead>
+          <tbody>
+          {% for friend in friends%}
+            <tr class="tr_likes">
+              <td><a href="/app/userview/{{ friend.username }}" target="_blank">{{ friend.username }}</a></td>
+              {% if friend.recentid and friend.recenttitle %}
+                <td><a href="/newsid/{{ friend.recentid }}" target="_blank">{{ friend.recenttitle}}</a></td>
+              {% else %}
+                <td>该用户没有收藏记录！</td>
+              {% endif %}
+              <td style="text-align: center"><button class="delbtn waves-effect waves-light red btn" id="{{ friend.username }}">取消关注</button> </td>
+            </tr>
+          {% empty %}
+            <p id="tips">您没有关注的人哦！</p>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
     {% else %}
       <p style="margin: 20px auto"> 你还没有登录，请
         <a class="waves-effect waves-light btn" href="{% url 'login' %}"> 登录 </a>
@@ -73,7 +87,7 @@
         <a class="waves-effect waves-light btn" href="{% url 'register' %}"> 注册 </a> 。
       </p>
     {% endif %}
-  </div>
+    </div>
 </main>
 
 <footer class="page-footer teal">
@@ -87,5 +101,37 @@
 <!--  Scripts-->
 <script src="{% static 'js/jquery-3.3.1.min.js' %}"></script>
 <script src="{% static 'js/materialize.min.js' %}"></script>
+<script src="{% static 'js/csrf.js' %}"></script>
+
+  <script>
+      // 删除收藏
+      $('body').on('click', '.delbtn', function () {
+          var csrftoken = getCookie('csrftoken');
+          var fname = $(this).attr('id');
+          // alert(stock_id)
+          $.ajaxSetup({
+              beforeSend: function (xhr, settings) {
+                  if (!csrfSafeMethod(settings.type) && !this.crossDomain) {
+                      xhr.setRequestHeader("X-CSRFToken", csrftoken);
+                  }
+              }
+          });
+          $.ajax({
+              url: '{% url 'friendsdelete' %}',
+              type: 'POST',
+              data: {fname: fname},
+              dataType: 'json',
+              success: function (arg) {
+                  // 网页动态显示删除这个记录，后台数据库已删除
+                  var btn_row = document.getElementById(fname).parentNode.parentNode
+                  btn_row.remove()
+                  // 如果此时表格为空，则显示错误信息
+                  if (! ($('tr.tr_likes').length)) {
+                      $('p#tips').append('<p class="errorlist" id="error_message" style="margin: 1rem 0">' + '对不起，您还没有关注的人</p>');
+                  }
+              }
+          })
+      });
+  </script>
 </body>
 </html>

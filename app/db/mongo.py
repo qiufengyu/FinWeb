@@ -19,11 +19,11 @@ class MongoUser(object):
     self.db_users.ensure_index('email', unique=True)
 
   def __del__(self):
-    self.client.close()
+    pass
+    # self.client.close()
 
   def check_user_exist(self, username: str):
     return self.db_users.find_one({'username': username})
-
 
   def check_user_password(self, username: str, password: str) -> bool:
     db_password = self.get_user_password(username)
@@ -42,6 +42,10 @@ class MongoUser(object):
     if new_user['username'] and new_user['password']:
       new_user['recent_reads_title'] = []
       new_user['recent_reads_url'] = []
+      new_user['likes_title'] = []
+      new_user['likes_url'] = []
+      new_user['likes_objid'] = []
+      new_user['friends'] = []
       new_user['tags'] = []
       new_user['stocks'] = []
       salted_password = self.salt_password(
@@ -161,41 +165,172 @@ class MongoUser(object):
       return get_stock_info(real_id)
     return None
 
-  def add_user_recent_reads_url(self, username, recent_reads_url):
+  def add_user_tag(self, username, tag_name):
+    user_tags = None
+    # print("Try adding tag", tag_name)
+    user_entity = self.check_user_exist(username)
+    if user_entity:
+      user_tags = user_entity["tags"]
+      this_tag = {}
+      this_tag["name"] = tag_name
+      this_tag["datetime"] = datetime.datetime.now()
+      user_tags.append(this_tag)
+    if user_tags:
+      tags_id_set = set()
+      for tag in user_tags:
+        if tag["name"] not in tags_id_set:
+          tags_id_set.add(tag["name"])
+        else:
+          user_tags.remove(tag)
+      self.db_users.find_one_and_update({'username': username},
+                                        {'$set': {'tags': user_tags}})
+      return tag_name
+    return None
+
+  def get_user_tags(self, username):
+    if self.check_user_exist(username):
+      user = self.db_users.find_one({'username': username})
+      if 'tags' in user:
+        tags_dict_list = user['tags']
+        sorted_tags_dict_list = sorted(tags_dict_list, key=lambda x: x['datetime'])
+        tags_list = []
+        idx = 0
+        for x in sorted_tags_dict_list:
+          idx += 1
+          this_tag = {}
+          this_tag['name'] = x['name']
+          this_tag['id'] = idx
+          tags_list.append(this_tag)
+        return tags_list
+    else:
+      return None
+
+  def delete_user_tag(self, username, tag_name):
+    user_entity = self.check_user_exist(username)
+    if user_entity:
+      user_tags = user_entity['tags']
+      if tag_name in user_tags:
+        del user_tags[tag_name]
+      # 写回数据库
+      self.db_users.find_one_and_update({'username': username},
+                                               {'$set': {'tags': user_tags}})
+      return tag_name
+    return None
+
+  def user_likes_add(self, username, news):
+    user_entity = self.check_user_exist(username)
+    if user_entity:
+      # print(user_entity)
+      user_likes_title = user_entity['likes_title']
+      user_likes_url = user_entity['likes_url']
+      user_likes_objid = user_entity['likes_objid']
+      if news['id'] in user_likes_objid:
+        # 如果已经收藏，点击取消
+        user_likes_title.remove(news['title'])
+        user_likes_url.remove(news['url'])
+        user_likes_objid.remove(news['id'])
+        self.db_users.find_one_and_update({'username': username},
+                                          {'$set': {'likes_title': user_likes_title,
+                                                    'likes_url': user_likes_url,
+                                                    'likes_objid': user_likes_objid } } )
+        return -1
+      else:
+        user_likes_title.append(news['title'])
+        user_likes_url.append(news['url'])
+        user_likes_objid.append(news['id'])
+        self.db_users.find_one_and_update({'username': username},
+                                          {'$set': {'likes_title': user_likes_title,
+                                                    'likes_url': user_likes_url,
+                                                    'likes_objid': user_likes_objid}})
+        return 1
+    return -2
+
+  def user_likes_delete(self, username, news):
+    user_entity = self.check_user_exist(username)
+    if user_entity:
+      # print(user_entity)
+      user_likes_title = user_entity['likes_title']
+      user_likes_url = user_entity['likes_url']
+      user_likes_objid = user_entity['likes_objid']
+      if news["id"] in user_likes_objid:
+        # 如果已经收藏，点击取消
+        user_likes_title.remove(news['title'])
+        user_likes_url.remove(news['url'])
+        user_likes_objid.remove(news['id'])
+        self.db_users.find_one_and_update({'username': username},
+                                          {'$set': {'likes_title': user_likes_title,
+                                                    'likes_url': user_likes_url,
+                                                    'likes_objid': user_likes_objid}})
+        return 1
+      else:
+        return -1
+    return -2
+
+  def add_user_friend(self, username, friend):
+    user_entity = self.check_user_exist(username)
+    friend_entity = self.check_user_exist(friend)
+    if user_entity and friend_entity:
+      # print(user_entity)
+      user_friends = user_entity['friends']
+      if friend in user_friends:
+        return -1
+      else:
+        user_friends.append(friend)
+        self.db_users.find_one_and_update({'username': username},
+                                          {'$set': {'friends': user_friends}})
+        return 1
+    return -1
+
+  def del_user_friend(self, username, friend):
+    user_entity = self.check_user_exist(username)
+    friend_entity = self.check_user_exist(friend)
+    if user_entity and friend_entity:
+      # print(user_entity)
+      user_friends = user_entity['friends']
+      if friend in user_friends:
+        user_friends.remove(friend)
+        self.db_users.find_one_and_update({'username': username},
+                                          {'$set': {'friends': user_friends}})
+        return 1
+      else:
+        return -1
+    return -1
+
+  def add_user_recent_reads(self, username, news):
     user_entity = self.check_user_exist(username)
     if user_entity:
       print(user_entity)
-      user_recent_reads = user_entity['recent_reads_url']
-      if recent_reads_url in user_recent_reads:
+      recent_reads_objid = user_entity['recent_reads_objid']
+      recent_reads_title = user_entity['recent_reads_title']
+      recent_reads_url = user_entity['recent_reads_url']
+      if news['id'] in recent_reads_objid:
         return
-      if len(user_recent_reads) < 50:
-        user_recent_reads.append(recent_reads_url)
-        self.db_users.find_one_and_update({'username': username},
-                                          {'$set': {'recent_reads_url': user_recent_reads}})
+      if len(recent_reads_objid) < 50:
+        recent_reads_objid.append(news['id'])
+        recent_reads_title.append(news['title'])
+        recent_reads_url.append(news['url'])
       else:
-        user_recent_reads = [recent_reads_url] + user_recent_reads[:-1]
-        self.db_users.find_one_and_update({'username': username},
-                                     {'$set': {'recent_reads_url': user_recent_reads}})
+        recent_reads_objid = [news['id']] + recent_reads_objid[:-1]
+        recent_reads_title = [news['title']] + recent_reads_title[:-1]
+        recent_reads_url = [news['url']] + recent_reads_url[:-1]
+      self.db_users.find_one_and_update({'username': username},
+                                        {'$set': {'recent_reads_url': recent_reads_url,
+                                                  'recent_reads_title': recent_reads_title,
+                                                  'recent_reads_objid': recent_reads_objid}})
 
-
-  def add_user_recent_reads_title(self, username, recent_reads_title):
-    user_entity = self.check_user_exist(username)
-    if user_entity:
-      user_recent_reads = user_entity['recent_reads_title']
-      if recent_reads_title in user_recent_reads:
-        return
-      if len(user_recent_reads) < 50:
-        user_recent_reads.append(recent_reads_title)
-        self.db_users.find_one_and_update({'username': username},
-                                          {'$set': {'recent_reads_title': user_recent_reads}})
-      else:
-        news_read_title = [recent_reads_title] + user_recent_reads[:-1]
-        self.db_users.find_one_and_update({'username': username},
-                                   {'$set': {'recent_reads_title': news_read_title}})
-
-  def db_update_user_tags(self, username, tags):
-    self.db_users.find_one_and_update({'username': username},
-                                   {'$set': {'tags': tags}})
+  def get_user_recent_like_one(self, username):
+    print(username)
+    recent_like_id = None
+    recent_like_title = None
+    if self.check_user_exist(username):
+      user = self.db_users.find_one({'username': username})
+      if 'likes_objid' in user:
+        likes_objid = user['likes_objid']
+        recent_like_id = likes_objid[-1] if len(likes_objid) > 0 else None
+      if 'likes_title' in user:
+        likes_title = user['likes_title']
+        recent_like_title = likes_title[-1] if len(likes_title) > 0 else None
+    return recent_like_id, recent_like_title
 
 
 class MongoNews(object):
@@ -223,6 +358,7 @@ class MongoNews(object):
       news_item['pb_time'] = news['pb_time']
       news_item['source'] = news['source']
       news_item['reads'] = int(news['reads'])
+      news_item['paras'] = news['para_content_text_and_images']
       if 'author' in news and news['author']:
         news_item['author'] = news['author']
       else:
@@ -245,19 +381,12 @@ class MongoNews(object):
       i = i + 1
     return ret_news
 
-  def get_news_url_by_id(self, id: str) -> str:
+  def get_news_by_id(self, id: str):
     res = self.db_candidate.find_one({"_id": ObjectId(id)})
     # print(res)
     if res:
-      return res['url']
-    else:
-      return None
-
-  def get_news_title_by_id(self, id: str) -> str:
-    res = self.db_candidate.find_one({"_id": ObjectId(id)})
-    # print(res)
-    if res:
-      return res['title']
+      res['id'] = str(res['_id'])
+      return res
     else:
       return None
 
@@ -267,5 +396,28 @@ class MongoNews(object):
       increase_value = int(res['reads']) + 1
       self.db_candidate.find_one_and_update({'_id': ObjectId(id)},
                           {'$set': {'reads': increase_value}})
+
+  def add_liked(self, newsid=None, username=None):
+    if newsid and username:
+      old = self.db_candidate.find_one({'_id': ObjectId(newsid)})
+      likedby = [username]
+      if "likedby" in old:
+        if username not in old["likedby"]:
+          likedby = likedby + old["likedby"]
+      self.db_candidate.find_one_and_update({'_id': ObjectId(newsid)},
+                                            {'$set': {'likedby': likedby}})
+
+  def del_liked(self, newsid=None, username=None):
+    if newsid and username:
+      old = self.db_candidate.find_one({'_id': ObjectId(newsid)})
+      if "likedby" in old:
+        old_likedby = old["likedby"]
+        if username in old_likedby:
+          likedby = old_likedby.remove(username)
+          self.db_candidate.find_one_and_update({'_id': ObjectId(newsid)},
+                                            {'$set': {'likedby': likedby}})
+
+
+
 
 

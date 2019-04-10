@@ -1,10 +1,9 @@
 <!DOCTYPE html>
 {% load static %}
-<html lang="zh-cn">
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title> 密码重置链接已发送 </title>
+  <title> 金融资讯 </title>
   <link rel="shortcut icon" href="{% static 'media/favicon.ico' %}">
   <link rel="stylesheet" href="{% static 'css/materialize.min.css' %}">
   <link rel="stylesheet" href="{% static 'css/style.css' %}"/>
@@ -51,14 +50,38 @@
 
 <main>
   <div class="container">
-    <h5 style="margin: 1rem auto;">密码重置链接已经发送</h5>
-    <p style="margin: 1rem auto;">
-      如果您输入的邮件地址 ({{ email }}) 所对应的账户存在，设置密码的提示已经发送邮件给您，您将很快收到。
-    </p>
-    <p style="margin: 1rem auto;">
-      如果您没有收到邮件，请确保您所输入的地址是正确的， 并检查您的垃圾邮件文件夹。
-    </p>
-  </div>
+    {% if user.is_authenticated %}
+      <h4 class="center">我的收藏</h4>
+      <p>您已登录，欢迎您：<a href="#">{{ user.username }}</a></p>
+      <div class="row">
+      <div class="col s12">
+        <table class="table">
+          <thead>
+          <tr>
+            <th>收藏内容</th>
+            <th style="text-align: center">编辑</th>
+          </tr>
+          </thead>
+          <tbody>
+          {% for news in likecontext %}
+            <tr class="tr_likes">
+              <td><a href="/newsid/{{ news.objid }}" target="_blank">{{ news.title }}</a></td>
+              <td style="text-align: center"><button class="delbtn waves-effect waves-light red btn" id="{{ news.objid }}">删除</button> </td>
+            </tr>
+          {% empty %}
+            <p id="tips">没有收藏任何资讯！</p>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p style="margin: 20px auto"> 你还没有登录，请
+        <a class="waves-effect waves-light btn" href="{% url 'login' %}"> 登录 </a>
+        或者
+        <a class="waves-effect waves-light btn" href="{% url 'register' %}"> 注册 </a> 。
+      </p>
+    {% endif %}
+    </div>
 </main>
 
 <footer class="page-footer teal">
@@ -69,11 +92,40 @@
   </div>
 </footer>
 
-
 <!--  Scripts-->
 <script src="{% static 'js/jquery-3.3.1.min.js' %}"></script>
 <script src="{% static 'js/materialize.min.js' %}"></script>
 <script src="{% static 'js/csrf.js' %}"></script>
 
+  <script>
+      // 删除收藏
+      $('body').on('click', '.delbtn', function () {
+          var csrftoken = getCookie('csrftoken');
+          var news_id = $(this).attr('id');
+          // alert(stock_id)
+          $.ajaxSetup({
+              beforeSend: function (xhr, settings) {
+                  if (!csrfSafeMethod(settings.type) && !this.crossDomain) {
+                      xhr.setRequestHeader("X-CSRFToken", csrftoken);
+                  }
+              }
+          });
+          $.ajax({
+              url: '{% url 'newslikedelete' %}',
+              type: 'POST',
+              data: {news_id: news_id},
+              dataType: 'json',
+              success: function (arg) {
+                  // 网页动态显示删除这个记录，后台数据库已删除
+                  var btn_row = document.getElementById(news_id).parentNode.parentNode
+                  btn_row.remove()
+                  // 如果此时表格为空，则显示错误信息
+                  if (! ($('tr.tr_likes').length)) {
+                      $('p#tips').append('<p class="errorlist" id="error_message" style="margin: 1rem 0">' + '对不起，您还没有 <button class="btn btn-primary addbtn" id="add_stock_3"> 添加 </button> 自选股</p>');
+                  }
+              }
+          })
+      });
+  </script>
 </body>
 </html>
