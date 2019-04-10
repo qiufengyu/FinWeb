@@ -265,7 +265,7 @@ def newsid(request, objid=None):
     print(username, ": ", objid)
     news = db_news.get_news_by_id(objid)
     # 同时为其阅读量增加 1
-
+    db_news.increase_reads(objid)
     if "likedby" in news and len(news["likedby"]) > 0:
       news["showliked"] = news["likedby"][-10:]
     if news:

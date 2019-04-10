@@ -393,9 +393,8 @@ class MongoNews(object):
   def increase_reads(self, id: str):
     res = self.db_candidate.find_one({"_id": ObjectId(id)})
     if res:
-      increase_value = int(res['reads']) + 1
       self.db_candidate.find_one_and_update({'_id': ObjectId(id)},
-                          {'$set': {'reads': increase_value}})
+                          {'$inc': {'reads': 1}})
 
   def add_liked(self, newsid=None, username=None):
     if newsid and username:
