@@ -3,6 +3,8 @@ from pprint import pprint
 import jieba
 import numpy as np
 from scipy.spatial.distance import cosine
+from collections import defaultdict
+from operator import itemgetter
 
 from django.conf import settings
 from django.contrib import auth
@@ -37,7 +39,7 @@ from app.stocks.get_stock_info import get_stock_info, get_stock_info_list
 
 db_users = MongoUser()
 db_news = MongoNews()
-
+word_vec = WordVec()
 
 def index(request):
   news_list = db_news.get_latest_news(top=15)
@@ -53,6 +55,9 @@ def login(request):
       if user and user.is_active:
         auth.login(request, user)
         print("Login ok")
+        # calculate user profile
+        uem = get_user_profile(username)
+        db_users.update_user_em(username, uem)
         return redirect('/')
       else:
         messages.error(request, _("请输入正确的用户和密码，注意它们它们都是区分大小写的。"))
@@ -201,18 +206,33 @@ def add_read_news(request):
       return JsonResponse({"info": "OK"})
     return HttpResponseServerError('数据库错误！', content_type="text/plain")
 
+def _get_title_vec(title: str):
+  item_matrix = []
+  for token in jieba.cut(title, cut_all=False):
+    token_vec = word_vec.getvec(token)
+    if token_vec is not None:
+      item_matrix.append(token_vec)
+  item_array = np.array(item_matrix)
+  return (np.mean(item_array, axis=0), np.max(item_array, axis=0))
+
+def get_user_profile(username):
+  user_entity = db_users.check_user_exist(username)
+  user_read_list = user_entity['recent_reads_title']
+  user_embedding_matrix = []
+  if len(user_read_list) < 1:
+    user_embedding_matrix.append([0.0] * settings.WORD_VEC_DIM)
+  else:
+    for read in user_read_list:
+      user_embedding_matrix.append(_get_title_vec(read)[0])
+  user_embedding_array = np.array(user_embedding_matrix)
+  user_em_mean = np.mean(user_embedding_array, axis=0)
+  user_em_max = np.max(user_embedding_array, axis=0)
+  user_em = np.concatenate((user_em_mean, user_em_max), axis=0)
+  return user_em
+
 # 推荐算法实现
 @login_required
 def news(request):
-  word_vec = WordVec()
-  def _get_title_vec(title: str):
-    item_matrix = []
-    for token in jieba.cut(title, cut_all=False):
-      token_vec = word_vec.getvec(token)
-      if token_vec is not None:
-        item_matrix.append(token_vec)
-    item_array = np.array(item_matrix)
-    return (np.mean(item_array, axis=0), np.max(item_array, axis=0))
   username = str(request.user)
   print(username)
   user_embedding_matrix = []
@@ -238,6 +258,7 @@ def news(request):
     user_em_mean = np.mean(user_embedding_array, axis=0)
     user_em_max = np.max(user_embedding_array, axis=0)
     user_em = np.concatenate((user_em_mean, user_em_max), axis=0)
+    db_users.update_user_em(username, user_em)
     filtered_candidates = []
     for candidate in candidates:
       if candidate['url'] not in user_read_url_set:
@@ -267,7 +288,16 @@ def newsid(request, objid=None):
     # 同时为其阅读量增加 1
     db_news.increase_reads(objid)
     if "likedby" in news and len(news["likedby"]) > 0:
-      news["showliked"] = news["likedby"][-10:]
+      news_toshow = []
+      raw_likedby = defaultdict(float)
+      current_user_em = get_user_profile(username)
+      for friend in news["likedby"]:
+        friend_em = get_user_profile(friend)
+        raw_likedby[friend] = cosine(current_user_em, friend_em)
+      for fr in sorted(raw_likedby.items(), key=itemgetter(1)):
+        news_toshow.append(fr[0])
+      news["likedby"] = news_toshow[-10:]
+      print(news_toshow)
     if news:
       db_users.add_user_recent_reads(username, news)
       return render(request, "news/newsid.html", context={"news": news})

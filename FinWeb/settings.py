@@ -24,7 +24,7 @@ SECRET_KEY = '=_5m*%gp6$4ya$3csxtwe_slguyqz!f21ix)sv+0hz*b--rsru'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = [ ]
+ALLOWED_HOSTS = ["*",]
 
 # Application definition
 
@@ -131,7 +131,7 @@ STATICFILES_DIRS = (
 )
 
 # MongoDB
-MONGO_HOST = "localhost"  # 主机IP
+MONGO_HOST = "114.212.191.119"  # 主机IP
 MONGO_PORT = 27017  # 端口号
 MONGO_DBNAME = 'fin_news'
 MONGO_COLLECTION_USER = 'users'

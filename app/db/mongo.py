@@ -1,3 +1,4 @@
+import numpy as np
 import pymongo
 import datetime
 
@@ -42,6 +43,7 @@ class MongoUser(object):
     if new_user['username'] and new_user['password']:
       new_user['recent_reads_title'] = []
       new_user['recent_reads_url'] = []
+      new_user['recent_reads_objid'] = []
       new_user['likes_title'] = []
       new_user['likes_url'] = []
       new_user['likes_objid'] = []
@@ -122,6 +124,23 @@ class MongoUser(object):
     user_entity = self.check_user_exist(username)
     if user_entity:
       return self.db_users.find_one({'username': username})['email']
+    else:
+      return None
+
+  def get_user_em(self, username):
+    user_entity = self.check_user_exist(username)
+    if user_entity:
+      ue = self.db_users.find_one({'username': username})
+      if "profile" in ue:
+        return np.array(ue["profile"])
+    return None
+
+  def update_user_em(self, username, em):
+    user_entity = self.check_user_exist(username)
+    em_list = em.tolist()
+    if user_entity:
+      self.db_users.find_one_and_update({'username': username},
+                                        {'$set': {'profile': em_list}})
     else:
       return None
 
