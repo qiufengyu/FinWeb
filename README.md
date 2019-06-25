@@ -17,6 +17,3 @@
 
 ### 版权信息
 暂不商用，出于研究组兴趣，仅作测试，对其中的新闻不拥有任何权益
-
-### Contact
-联系 Email: daixinyu@nju.edu.cn
